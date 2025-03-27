@@ -118,7 +118,6 @@ Your database may not be available to serve requests during the migration, conti
 		});
 		it("multiple accounts: should let the user apply migrations with an account_id in config", async () => {
 			setIsTTY(false);
-			const std = mockConsoleMethods();
 			msw.use(
 				http.post(
 					"*/accounts/:accountId/d1/database/:databaseId/query",
@@ -150,7 +149,7 @@ Your database may not be available to serve requests during the migration, conti
 								name: "benchmark3-v1",
 								num_tables: 2,
 								uuid: "7b0c1d24-ec57-4179-8663-9b82dafe9277",
-								version: "production",
+								version: "alpha",
 							},
 							success: true,
 							errors: [],
@@ -158,7 +157,15 @@ Your database may not be available to serve requests during the migration, conti
 						},
 						{ status: 200 }
 					);
-				})
+				}),
+				http.post(
+					"*/accounts/:accountId/d1/database/:databaseId/backup",
+					async ({ params }) => {
+						// All we need to do here is check that the right account ID was provided.
+						expect(params.accountId).toMatchInlineSnapshot(`"nx01"`);
+						return HttpResponse.error();
+					}
+				)
 			);
 			writeWranglerConfig({
 				d1_databases: [
@@ -186,8 +193,12 @@ Ok to create /tmp/my-migrations-go-here?`,
 Your database may not be available to serve requests during the migration, continue?`,
 				result: true,
 			});
-			await runWrangler("d1 migrations apply db --remote");
-			expect(std.out).toBe("");
+
+			await expect(
+				runWrangler("d1 migrations apply db --remote")
+			).rejects.toThrowErrorMatchingInlineSnapshot(
+				`[TypeError: Failed to fetch]`
+			);
 		});
 	});
 

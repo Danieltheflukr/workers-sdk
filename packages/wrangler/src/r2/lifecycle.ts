@@ -72,17 +72,15 @@ export const r2BucketLifecycleAddCommand = createCommand({
 		status: "stable",
 		owner: "Product: R2",
 	},
-	positionalArgs: ["bucket", "name", "prefix"],
+	positionalArgs: ["bucket", "id", "prefix"],
 	args: {
 		bucket: {
 			describe: "The name of the R2 bucket to add a lifecycle rule to",
 			type: "string",
 			demandOption: true,
 		},
-		name: {
-			describe:
-				"A unique name for the lifecycle rule, used to identify and manage it.",
-			alias: "id",
+		id: {
+			describe: "A unique identifier for the lifecycle rule",
 			type: "string",
 			requiresArg: true,
 		},
@@ -99,7 +97,7 @@ export const r2BucketLifecycleAddCommand = createCommand({
 		},
 		"expire-date": {
 			describe: "Date after which objects expire (YYYY-MM-DD)",
-			type: "string",
+			type: "number",
 			requiresArg: true,
 		},
 		"ia-transition-days": {
@@ -143,7 +141,7 @@ export const r2BucketLifecycleAddCommand = createCommand({
 			abortMultipartDays,
 			jurisdiction,
 			force,
-			name,
+			id,
 			prefix,
 		},
 		{ config }
@@ -156,16 +154,16 @@ export const r2BucketLifecycleAddCommand = createCommand({
 			jurisdiction
 		);
 
-		if (!name && isInteractive()) {
-			name = await prompt("Enter a unique name for the lifecycle rule");
+		if (!id && isInteractive()) {
+			id = await prompt("Enter a unique identifier for the lifecycle rule");
 		}
 
-		if (!name) {
-			throw new UserError("Must specify a rule name.");
+		if (!id) {
+			throw new UserError("Must specify a rule ID.");
 		}
 
 		const newRule: LifecycleRule = {
-			id: name,
+			id: id,
 			enabled: true,
 			conditions: {},
 		};
@@ -295,7 +293,7 @@ export const r2BucketLifecycleAddCommand = createCommand({
 
 		if (!prefix && !force) {
 			const confirmedAdd = await confirm(
-				`Are you sure you want to add lifecycle rule '${name}' to bucket '${bucket}' without a prefix? ` +
+				`Are you sure you want to add lifecycle rule '${id}' to bucket '${bucket}' without a prefix? ` +
 					`The lifecycle rule will apply to all objects in your bucket.`
 			);
 			if (!confirmedAdd) {
@@ -309,9 +307,9 @@ export const r2BucketLifecycleAddCommand = createCommand({
 		}
 
 		lifecycleRules.push(newRule);
-		logger.log(`Adding lifecycle rule '${name}' to bucket '${bucket}'...`);
+		logger.log(`Adding lifecycle rule '${id}' to bucket '${bucket}'...`);
 		await putLifecycleRules(accountId, bucket, lifecycleRules, jurisdiction);
-		logger.log(`✨ Added lifecycle rule '${name}' to bucket '${bucket}'.`);
+		logger.log(`✨ Added lifecycle rule '${id}' to bucket '${bucket}'.`);
 	},
 });
 
@@ -328,9 +326,8 @@ export const r2BucketLifecycleRemoveCommand = createCommand({
 			type: "string",
 			demandOption: true,
 		},
-		name: {
-			describe: "The unique name of the lifecycle rule to remove",
-			alias: "id",
+		id: {
+			describe: "The unique identifier of the lifecycle rule to remove",
 			type: "string",
 			demandOption: true,
 			requiresArg: true,
@@ -345,7 +342,7 @@ export const r2BucketLifecycleRemoveCommand = createCommand({
 	async handler(args, { config }) {
 		const accountId = await requireAuth(config);
 
-		const { bucket, name, jurisdiction } = args;
+		const { bucket, id, jurisdiction } = args;
 
 		const lifecycleRules = await getLifecycleRules(
 			accountId,
@@ -353,19 +350,19 @@ export const r2BucketLifecycleRemoveCommand = createCommand({
 			jurisdiction
 		);
 
-		const index = lifecycleRules.findIndex((rule) => rule.id === name);
+		const index = lifecycleRules.findIndex((rule) => rule.id === id);
 
 		if (index === -1) {
 			throw new UserError(
-				`Lifecycle rule with ID '${name}' not found in configuration for '${bucket}'.`
+				`Lifecycle rule with ID '${id}' not found in configuration for '${bucket}'.`
 			);
 		}
 
 		lifecycleRules.splice(index, 1);
 
-		logger.log(`Removing lifecycle rule '${name}' from bucket '${bucket}'...`);
+		logger.log(`Removing lifecycle rule '${id}' from bucket '${bucket}'...`);
 		await putLifecycleRules(accountId, bucket, lifecycleRules, jurisdiction);
-		logger.log(`Lifecycle rule '${name}' removed from bucket '${bucket}'.`);
+		logger.log(`Lifecycle rule '${id}' removed from bucket '${bucket}'.`);
 	},
 });
 

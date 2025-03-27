@@ -36,7 +36,6 @@ describe("wrangler", () => {
 
 					GLOBAL FLAGS
 					  -c, --config   Path to Wrangler configuration file  [string]
-					      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 					  -e, --env      Environment to use for operations, and for selecting .env and .dev.vars files  [string]
 					  -h, --help     Show help  [boolean]
 					  -v, --version  Show version number  [boolean]
@@ -69,7 +68,6 @@ describe("wrangler", () => {
 
 						GLOBAL FLAGS
 						  -c, --config   Path to Wrangler configuration file  [string]
-						      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 						  -e, --env      Environment to use for operations, and for selecting .env and .dev.vars files  [string]
 						  -h, --help     Show help  [boolean]
 						  -v, --version  Show version number  [boolean]
@@ -197,7 +195,6 @@ describe("wrangler", () => {
 
 						GLOBAL FLAGS
 						  -c, --config   Path to Wrangler configuration file  [string]
-						      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 						  -e, --env      Environment to use for operations, and for selecting .env and .dev.vars files  [string]
 						  -h, --help     Show help  [boolean]
 						  -v, --version  Show version number  [boolean]

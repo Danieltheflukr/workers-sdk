@@ -78,7 +78,7 @@ function containerAppToCreateApplication(
 ): CreateApplicationRequest {
 	const configuration =
 		containerApp.configuration as UserDeploymentConfiguration;
-	const app = {
+	return {
 		...containerApp,
 		configuration,
 		scheduling_policy:
@@ -95,12 +95,6 @@ function containerAppToCreateApplication(
 			),
 		},
 	};
-
-	// delete the fields that should not be sent to API
-	delete (app as Record<string, unknown>)["class_name"];
-	delete (app as Record<string, unknown>)["image"];
-
-	return app;
 }
 
 function isNumber(c: string | number) {
@@ -285,24 +279,24 @@ export async function applyCommand(
 		"deploy changes to your application"
 	);
 
-	config.containers ??= [];
-
-	if (config.containers.length === 0) {
+	if (config.containers.app.length === 0) {
 		endSection(
 			"You don't have any container applications defined in your wrangler.toml",
 			"You can set the following configuration in your wrangler.toml"
 		);
 		const configuration = {
-			image: "docker.io/cloudflare/hello-world:1.0",
+			configuration: {
+				image: "docker.io/cloudflare/hello-world:1.0",
+			},
 			instances: 2,
 			name: config.name ?? "my-containers-application",
 		};
 		const endConfig: JsonMap =
 			args.env !== undefined
 				? {
-						env: { [args.env]: { containers: [configuration] } },
+						env: { [args.env]: { containers: { app: [configuration] } } },
 					}
-				: { containers: [configuration] };
+				: { containers: { app: [configuration] } };
 		formatConfigSnippet(endConfig, config.configPath)
 			.split("\n")
 			.forEach((el) => {
@@ -337,12 +331,11 @@ export async function applyCommand(
 
 	log(dim("Container application changes\n"));
 
-	for (const appConfigNoDefaults of config.containers) {
+	for (const appConfigNoDefaults of config.containers.app) {
 		const appConfig = containerAppToCreateApplication(
 			appConfigNoDefaults,
 			args.skipDefaults
 		);
-
 		const application = applicationByNames[appConfig.name];
 		if (application !== undefined && application !== null) {
 			// we need to sort the objects (by key) because the diff algorithm works with
@@ -352,16 +345,18 @@ export async function applyCommand(
 			);
 
 			const prev = formatConfigSnippet(
-				{ containers: [prevApp as ContainerApp] },
+				{ containers: { app: [prevApp as ContainerApp] } },
 				config.configPath
 			);
 			const now = formatConfigSnippet(
 				{
-					containers: [
-						sortObjectRecursive<CreateApplicationRequest>(
-							appConfig
-						) as ContainerApp,
-					],
+					containers: {
+						app: [
+							sortObjectRecursive<CreateApplicationRequest>(
+								appConfig
+							) as ContainerApp,
+						],
+					},
 				},
 				config.configPath
 			);
@@ -463,7 +458,7 @@ export async function applyCommand(
 		updateStatus(bold.underline(green.underline("NEW")) + ` ${appConfig.name}`);
 
 		const s = formatConfigSnippet(
-			{ containers: [appConfig as ContainerApp] },
+			{ containers: { app: [appConfig as ContainerApp] } },
 			config.configPath
 		);
 
@@ -474,12 +469,10 @@ export async function applyCommand(
 				printLine(el, "  ");
 			});
 
-		const configToPush = { ...appConfig };
-
 		// add to the actions array to create the app later
 		actions.push({
 			action: "create",
-			application: configToPush,
+			application: appConfig,
 		});
 	}
 

@@ -10,14 +10,14 @@
 	},
 	"devDependencies": {
 		"@cloudflare/workers-tsconfig": "workspace:*",
-		"@cloudflare/workers-types": "^4.20250320.0",
+		"@cloudflare/workers-types": "^4.20250204.0",
 		"typescript": "catalog:default",
 		"undici": "catalog:default",
 		"vitest": "catalog:default",
 		"wrangler": "workspace:*"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=16.13"
 	},
 	"volta": {
 		"extends": "../../package.json"

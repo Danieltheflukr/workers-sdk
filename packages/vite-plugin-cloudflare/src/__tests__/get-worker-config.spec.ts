@@ -24,6 +24,7 @@ describe("getWorkerConfig", () => {
 		expect(raw.main).toMatch(/index\.ts$/);
 		expect(raw.minify).toBeUndefined();
 		expect(raw.name).toEqual("my-worker");
+		expect(raw.node_compat).toBeUndefined();
 		expect(raw.no_bundle).toBeUndefined();
 		expect(raw.preserve_file_names).toBeUndefined();
 		expect(raw.rules).toEqual([]);
@@ -50,6 +51,7 @@ describe("getWorkerConfig", () => {
 		expect(nonApplicable).toEqual({
 			replacedByVite: new Set(),
 			notRelevant: new Set(),
+			overridden: new Set(),
 		});
 	});
 
@@ -70,6 +72,7 @@ describe("getWorkerConfig", () => {
 		expect(config.main).toMatch(/index\.ts$/);
 		expect(config.minify).toBeUndefined();
 		expect(config.name).toEqual("my-worker");
+		expect(config.node_compat).toBeUndefined();
 		expect(config.no_bundle).toBeUndefined();
 		expect(config.preserve_file_names).toBeUndefined();
 		expect(config.rules).toEqual([]);
@@ -80,6 +83,7 @@ describe("getWorkerConfig", () => {
 		expect(nonApplicable).toEqual({
 			replacedByVite: new Set(),
 			notRelevant: new Set(),
+			overridden: new Set(),
 		});
 	});
 
@@ -119,6 +123,8 @@ describe("getWorkerConfig", () => {
 		expect("minify" in config).toBeFalsy();
 		expect(raw.minify).toBe(true);
 		expect(config.name).toEqual("my-worker");
+		expect("node_compat" in config).toBeFalsy();
+		expect(raw.node_compat).toEqual(false);
 		expect("no_bundle" in config).toBeFalsy();
 		expect(raw.no_bundle).toEqual(false);
 		expect("preserve_file_names" in config).toBeFalsy();
@@ -147,43 +153,13 @@ describe("getWorkerConfig", () => {
 				"build",
 				"find_additional_modules",
 				"no_bundle",
+				"node_compat",
 				"preserve_file_names",
-				"rules",
 				"site",
 				"tsconfig",
 				"upload_source_maps",
 			])
 		);
-	});
-
-	describe("invalid main config", () => {
-		test("should throw if the provided main config doesn't point to an existing file", () => {
-			expect(() =>
-				getWorkerConfig(
-					fileURLToPath(
-						new URL("fixtures/non-existing-main-wrangler.toml", import.meta.url)
-					),
-					undefined
-				)
-			).toThrowError(
-				/The provided Wrangler config main field \(.*?index\.ts\) doesn't point to an existing file/
-			);
-		});
-
-		test("should throw if the provided main config doesn't point to an existing file", () => {
-			expect(() =>
-				getWorkerConfig(
-					fileURLToPath(
-						new URL(
-							"fixtures/incorrect-dir-main-wrangler.toml",
-							import.meta.url
-						)
-					),
-					undefined
-				)
-			).toThrowError(
-				/The provided Wrangler config main field \(.*?fixtures\) points to a directory, it needs to point to a file instead/
-			);
-		});
+		expect(nonApplicable.overridden).toEqual(new Set(["rules"]));
 	});
 });

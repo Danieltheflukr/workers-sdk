@@ -1,6 +1,4 @@
 import { execSync } from "node:child_process";
-import { writeFile } from "node:fs/promises";
-import path from "node:path";
 import { deploy } from "../api/pages/deploy";
 import { fetchResult } from "../cfetch";
 import { configFileName, readPagesConfig } from "../config";
@@ -12,7 +10,6 @@ import { logger } from "../logger";
 import * as metrics from "../metrics";
 import { writeOutput } from "../output";
 import { requireAuth } from "../user";
-import { handleStartupError } from "../utils/friendly-validator-errors";
 import {
 	MAX_DEPLOYMENT_STATUS_ATTEMPTS,
 	PAGES_CONFIG_CACHE_FILENAME,
@@ -20,7 +17,6 @@ import {
 import { EXIT_CODE_INVALID_PAGES_CONFIG } from "./errors";
 import { listProjects } from "./projects";
 import { promptSelectProject } from "./prompt-select-project";
-import { getPagesProjectRoot, getPagesTmpDir } from "./utils";
 import type { Config } from "../config";
 import type {
 	CommonYargsArgv,
@@ -33,7 +29,6 @@ import type {
 	Project,
 	UnifiedDeploymentLogMessages,
 } from "@cloudflare/types";
-import type { File } from "undici";
 
 type PagesDeployArgs = StrictYargsOptionsToInterface<typeof Options>;
 
@@ -77,8 +72,7 @@ export function Options(yargs: CommonYargsArgv) {
 			},
 			"no-bundle": {
 				type: "boolean",
-				default: undefined,
-				conflicts: "bundle",
+				default: false,
 				description: "Whether to run bundling on `_worker.js` before deploying",
 			},
 			config: {
@@ -265,18 +259,14 @@ export const Handler = async (args: PagesDeployArgs) => {
 					isGitDir = false;
 				}
 
-				let productionBranch: string | undefined;
-				if (isGitDir) {
-					try {
-						productionBranch = execSync(`git rev-parse --abbrev-ref HEAD`)
-							.toString()
-							.trim();
-					} catch (err) {}
-				}
-
-				productionBranch = await prompt("Enter the production branch name:", {
-					defaultValue: productionBranch ?? "production",
-				});
+				const productionBranch = await prompt(
+					"Enter the production branch name:",
+					{
+						defaultValue: isGitDir
+							? execSync(`git rev-parse --abbrev-ref HEAD`).toString().trim()
+							: "production",
+					}
+				);
 
 				if (!productionBranch) {
 					throw new FatalError("Must specify a production branch.", 1);
@@ -350,9 +340,7 @@ export const Handler = async (args: PagesDeployArgs) => {
 		}
 	}
 
-	const enableBundling = args.bundle ?? !(args.noBundle ?? config?.no_bundle);
-
-	const { deploymentResponse, formData } = await deploy({
+	const deploymentResponse = await deploy({
 		directory,
 		accountId,
 		projectName,
@@ -361,7 +349,9 @@ export const Handler = async (args: PagesDeployArgs) => {
 		commitHash,
 		commitDirty,
 		skipCaching: args.skipCaching,
-		bundle: enableBundling,
+		// TODO: Here lies a known bug. If you specify both `--bundle` and `--no-bundle`, this behavior is undefined and you will get unexpected results.
+		// There is no sane way to get the true value out of yargs, so here we are.
+		bundle: args.bundle ?? !args.noBundle,
 		// Sourcemaps from deploy arguments will take precedence so people can try it for one-off deployments without updating their wrangler.toml
 		sourceMaps: config?.upload_source_maps || args.uploadSourceMaps,
 		args,
@@ -434,13 +424,6 @@ export const Handler = async (args: PagesDeployArgs) => {
 		const failureMessage = logs.data[logs.total - 1].line
 			.replace("Error:", "")
 			.trim();
-
-		if (failureMessage.includes("Script startup exceeded CPU time limit")) {
-			const workerBundle = formData.get("_worker.bundle") as File;
-			const filePath = path.join(getPagesTmpDir(), "_worker.bundle");
-			await writeFile(filePath, workerBundle.stream());
-			await handleStartupError(filePath, getPagesProjectRoot());
-		}
 
 		throw new FatalError(
 			`Deployment failed!

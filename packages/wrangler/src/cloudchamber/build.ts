@@ -1,5 +1,4 @@
 import { spawn } from "child_process";
-import { stat } from "fs/promises";
 import { logRaw } from "@cloudflare/cli";
 import { ImageRegistriesService } from "./client";
 import type { Config } from "../config";
@@ -69,18 +68,17 @@ export async function constructBuildCommand(options: {
 }
 
 // Function for building
-export function dockerBuild(options: { buildCmd: string }): Promise<void> {
-	return new Promise((resolve, reject) => {
-		const buildCmd = options.buildCmd.split(" ").slice(1);
-		const buildExec = options.buildCmd.split(" ").shift();
-		const child = spawn(String(buildExec), buildCmd, { stdio: "inherit" });
-		child.on("exit", (code) => {
-			if (code === 0) {
-				resolve();
-			} else {
-				reject(new Error(`Build exited with code: ${code}`));
-			}
-		});
+export async function dockerBuild(options: { buildCmd: string }) {
+	const buildCmd = options.buildCmd.split(" ").slice(1);
+	const buildExec = options.buildCmd.split(" ").shift();
+	const child = spawn(String(buildExec), buildCmd, { stdio: "inherit" }).on(
+		"error",
+		(err) => {
+			throw err;
+		}
+	);
+	await new Promise((resolve) => {
+		child.on("close", resolve);
 	});
 }
 
@@ -162,33 +160,17 @@ export function pushYargs(yargs: CommonYargsArgvJSON) {
 		.positional("TAG", { type: "string", demandOption: true });
 }
 
-async function isDir(path: string): Promise<boolean> {
-	const stats = await stat(path);
-	return await stats.isDirectory();
-}
-
 export async function buildCommand(
 	args: StrictYargsOptionsToInterfaceJSON<typeof buildYargs>,
 	_: Config
 ) {
-	try {
-		const dir = await isDir(args.PATH);
-		if (!dir) {
-			logRaw(`PATH must be a directory`);
-			return;
-		}
-	} catch (error) {
-		logRaw(`Error when checking ${args.PATH}: ${error}`);
-		return;
-	}
-
 	try {
 		await constructBuildCommand({
 			imageTag: args.tag,
 			pathToDockerfile: args.PATH,
 			pathToDocker: args.pathToDocker,
 		})
-			.then((bc) => dockerBuild({ buildCmd: bc }))
+			.then(async (bc) => dockerBuild({ buildCmd: bc }))
 			.then(async () => {
 				if (args.push) {
 					await dockerLoginManagedRegistry({
@@ -202,7 +184,7 @@ export async function buildCommand(
 		if (error instanceof Error) {
 			logRaw(error.message);
 		} else {
-			logRaw("Unknown error");
+			logRaw("An unknown error occurred");
 		}
 	}
 }

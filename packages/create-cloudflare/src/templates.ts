@@ -18,19 +18,29 @@ import {
 	writeFile,
 	writeJSON,
 } from "helpers/files";
+import angularTemplateExperimental from "templates-experimental/angular/c3";
+import astroTemplateExperimental from "templates-experimental/astro/c3";
+import docusaurusTemplateExperimental from "templates-experimental/docusaurus/c3";
+import gatsbyTemplateExperimental from "templates-experimental/gatsby/c3";
+import assetsOnlyTemplateExperimental from "templates-experimental/hello-world-assets-only/c3";
+import helloWorldWithDurableObjectAssetsTemplateExperimental from "templates-experimental/hello-world-durable-object-with-assets/c3";
+import helloWorldWithAssetsTemplateExperimental from "templates-experimental/hello-world-with-assets/c3";
+import honoTemplateExperimental from "templates-experimental/hono/c3";
 import nextTemplateExperimental from "templates-experimental/next/c3";
+import nuxtTemplateExperimental from "templates-experimental/nuxt/c3";
+import qwikTemplateExperimental from "templates-experimental/qwik/c3";
+import remixTemplateExperimental from "templates-experimental/remix/c3";
 import solidTemplateExperimental from "templates-experimental/solid/c3";
+import svelteTemplateExperimental from "templates-experimental/svelte/c3";
+import vueTemplateExperimental from "templates-experimental/vue/c3";
 import analogTemplate from "templates/analog/c3";
 import angularTemplate from "templates/angular/c3";
 import astroTemplate from "templates/astro/c3";
 import commonTemplate from "templates/common/c3";
 import docusaurusTemplate from "templates/docusaurus/c3";
 import gatsbyTemplate from "templates/gatsby/c3";
-import assetsOnlyTemplate from "templates/hello-world-assets-only/c3";
-import helloWorldWithDurableObjectAssetsTemplate from "templates/hello-world-durable-object-with-assets/c3";
 import helloWorldDurableObjectTemplate from "templates/hello-world-durable-object/c3";
-import helloWorldWithAssetsTemplate from "templates/hello-world-with-assets/c3";
-import helloWorldWorkerTemplate from "templates/hello-world/c3";
+import helloWorldTemplate from "templates/hello-world/c3";
 import honoTemplate from "templates/hono/c3";
 import nextTemplate from "templates/next/c3";
 import nuxtTemplate from "templates/nuxt/c3";
@@ -48,15 +58,6 @@ import { isInsideGitRepo } from "./git";
 import { validateProjectDirectory, validateTemplateUrl } from "./validators";
 import type { Option } from "@cloudflare/cli/interactive";
 import type { C3Args, C3Context, PackageJson } from "types";
-
-export type MultiPlatformTemplateConfig = {
-	displayName: string;
-	description?: string;
-	platformVariants: {
-		pages: TemplateConfig;
-		workers: TemplateConfig;
-	};
-};
 
 export type TemplateConfig = {
 	/**
@@ -163,16 +164,23 @@ const defaultSelectVariant = async (ctx: C3Context) => {
 	return ctx.args.lang;
 };
 
-export type TemplateMap = Record<
-	string,
-	TemplateConfig | MultiPlatformTemplateConfig
->;
+export type TemplateMap = Record<string, TemplateConfig>;
 
 export function getFrameworkMap({ experimental = false }): TemplateMap {
 	if (experimental) {
 		return {
+			angular: angularTemplateExperimental,
+			astro: astroTemplateExperimental,
+			docusaurus: docusaurusTemplateExperimental,
+			gatsby: gatsbyTemplateExperimental,
+			hono: honoTemplateExperimental,
 			next: nextTemplateExperimental,
+			nuxt: nuxtTemplateExperimental,
+			qwik: qwikTemplateExperimental,
+			remix: remixTemplateExperimental,
 			solid: solidTemplateExperimental,
+			svelte: svelteTemplateExperimental,
+			vue: vueTemplateExperimental,
 		};
 	} else {
 		return {
@@ -196,18 +204,19 @@ export function getFrameworkMap({ experimental = false }): TemplateMap {
 
 export function getTemplateMap({ experimental = false }) {
 	if (experimental) {
-		return {} as Record<string, TemplateConfig>;
+		return {
+			"hello-world-assets-only": assetsOnlyTemplateExperimental,
+			"hello-world-with-assets": helloWorldWithAssetsTemplateExperimental,
+			"hello-world-durable-object-with-assets":
+				helloWorldWithDurableObjectAssetsTemplateExperimental,
+		} as Record<string, TemplateConfig>;
 	} else {
 		return {
-			"hello-world": helloWorldWorkerTemplate,
-			"hello-world-assets-only": assetsOnlyTemplate,
-			"hello-world-with-assets": helloWorldWithAssetsTemplate,
-			"hello-world-durable-object": helloWorldDurableObjectTemplate,
-			"hello-world-durable-object-with-assets":
-				helloWorldWithDurableObjectAssetsTemplate,
+			"hello-world": helloWorldTemplate,
 			common: commonTemplate,
 			scheduled: scheduledTemplate,
 			queues: queuesTemplate,
+			"hello-world-durable-object": helloWorldDurableObjectTemplate,
 			openapi: openapiTemplate,
 			"pre-existing": preExistingTemplate,
 		} as Record<string, TemplateConfig>;
@@ -292,31 +301,28 @@ export const createContext = async (
 	// Derive all correlated arguments first so we can skip some prompts
 	deriveCorrelatedArgs(args);
 
-	let linesPrinted = 0;
-
 	// Allows the users to go back to the previous step
 	// By moving the cursor up to a certain line and clearing the screen
-	const goBack = async (
-		from: "category" | "type" | "framework" | "lang" | "platform",
-	) => {
+	const goBack = async (from: "category" | "type" | "framework" | "lang") => {
 		const currentArgs = { ...args };
+		let linesPrinted = 0;
 
 		switch (from) {
 			case "category":
+				linesPrinted = 6;
 				args.projectName = undefined;
 				break;
 			case "type":
+				linesPrinted = 9;
 				args.category = undefined;
 				break;
 			case "framework":
+				linesPrinted = 9;
 				args.category = undefined;
 				break;
-			case "platform":
-				args.framework = undefined;
-				break;
 			case "lang":
+				linesPrinted = 12;
 				args.type = undefined;
-				args.framework = undefined;
 				break;
 		}
 
@@ -355,10 +361,9 @@ export const createContext = async (
 
 	const categoryOptions = [
 		{
-			label: "Hello World Starter",
+			label: "Hello World example",
 			value: "hello-world",
-			description:
-				"Select from basic scaffolds to get started with Workers, Assets and Durable Objects",
+			description: "Select from barebones examples to get started with Workers",
 		},
 		{
 			label: "Framework Starter",
@@ -388,7 +393,6 @@ export const createContext = async (
 		options: categoryOptions,
 		defaultValue: prevArgs?.category ?? C3_DEFAULTS.category,
 	});
-	linesPrinted += 6;
 
 	if (category === BACK_VALUE) {
 		return goBack("category");
@@ -414,45 +418,15 @@ export const createContext = async (
 			options: frameworkOptions.concat(backOption),
 			defaultValue: prevArgs?.framework ?? C3_DEFAULTS.framework,
 		});
-		linesPrinted += 3;
 
 		if (framework === BACK_VALUE) {
 			return goBack("framework");
 		}
 
-		let frameworkConfig = frameworkMap[framework];
+		const frameworkConfig = frameworkMap[framework];
 
 		if (!frameworkConfig) {
 			throw new Error(`Unsupported framework: ${framework}`);
-		}
-
-		if ("platformVariants" in frameworkConfig) {
-			const platform = await processArgument(args, "platform", {
-				type: "select",
-				label: "platform",
-				question: "Select your deployment platform",
-				options: [
-					{
-						label: "Workers with Assets (BETA)",
-						value: "workers",
-						description:
-							"Take advantage of the full Developer Platform, including R2, Queues, Durable Objects and more.",
-					},
-					{
-						label: "Pages",
-						value: "pages",
-						description: "Great for simple websites and applications.",
-					},
-					backOption,
-				],
-				defaultValue: "workers",
-			});
-			linesPrinted += 3;
-			if ((platform as string) === BACK_VALUE) {
-				return goBack("platform");
-			}
-
-			frameworkConfig = frameworkConfig.platformVariants[platform];
 		}
 
 		template = {
@@ -490,7 +464,6 @@ export const createContext = async (
 			options: templateOptions.concat(backOption),
 			defaultValue: prevArgs?.type ?? C3_DEFAULTS.type,
 		});
-		linesPrinted += 3;
 
 		if (type === BACK_VALUE) {
 			return goBack("type");
@@ -539,7 +512,6 @@ export const createContext = async (
 					.concat(args.template ? [] : backOption),
 				defaultValue: C3_DEFAULTS.lang,
 			});
-			linesPrinted += 3;
 
 			if (lang === BACK_VALUE) {
 				return goBack("lang");
@@ -745,7 +717,7 @@ export const updatePackageName = async (ctx: C3Context) => {
 	// Update package.json with project name
 	const placeholderNames = ["<TBD>", "TBD", ""];
 	const pkgJsonPath = resolve(ctx.project.path, "package.json");
-	const pkgJson = readJSON(pkgJsonPath) as PackageJson;
+	const pkgJson = readJSON(pkgJsonPath);
 
 	if (!placeholderNames.includes(pkgJson.name)) {
 		return;
@@ -769,11 +741,11 @@ export const updatePackageScripts = async (ctx: C3Context) => {
 	s.start("Updating `package.json` scripts");
 
 	const pkgJsonPath = resolve(ctx.project.path, "package.json");
-	let pkgJson = readJSON(pkgJsonPath) as PackageJson;
+	let pkgJson = readJSON(pkgJsonPath);
 
 	// Run any transformers defined by the template
 	const transformed = await ctx.template.transformPackageJson(pkgJson, ctx);
-	pkgJson = deepmerge(pkgJson, transformed as PackageJson);
+	pkgJson = deepmerge(pkgJson, transformed);
 
 	writeJSON(pkgJsonPath, pkgJson);
 	s.stop(`${brandColor("updated")} ${dim("`package.json`")}`);
@@ -826,21 +798,14 @@ export const addWranglerToGitIgnore = (ctx: C3Context) => {
 	}
 
 	const existingGitIgnoreContent = readFile(gitIgnorePath);
-	const wranglerGitIgnoreFilesToAdd: string[] = [];
 
-	const hasDotWrangler = existingGitIgnoreContent.match(
-		/^\/?\.wrangler(\/|\s|$)/m,
+	const wranglerGitIgnoreFiles = [".wrangler", ".dev.vars"] as const;
+	const wranglerGitIgnoreFilesToAdd = wranglerGitIgnoreFiles.filter(
+		(file) =>
+			!existingGitIgnoreContent.match(
+				new RegExp(`\n${file}${file === ".wrangler" ? "/?" : ""}\\s+(#'*)?`),
+			),
 	);
-	if (!hasDotWrangler) {
-		wranglerGitIgnoreFilesToAdd.push(".wrangler");
-	}
-
-	const hasDotDevDotVars = existingGitIgnoreContent.match(
-		/^\/?\.dev\.vars(\.?\*)?(\s|$)/m,
-	);
-	if (!hasDotDevDotVars) {
-		wranglerGitIgnoreFilesToAdd.push(".dev.vars*");
-	}
 
 	if (wranglerGitIgnoreFilesToAdd.length === 0) {
 		return;
@@ -854,7 +819,7 @@ export const addWranglerToGitIgnore = (ctx: C3Context) => {
 		...(!existingGitIgnoreContent.match(/\n\s*$/) ? [""] : []),
 	];
 
-	if (wranglerGitIgnoreFilesToAdd.length > 1) {
+	if (wranglerGitIgnoreFilesToAdd.length === wranglerGitIgnoreFiles.length) {
 		linesToAppend.push("# wrangler files");
 	}
 

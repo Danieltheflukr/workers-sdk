@@ -33,8 +33,6 @@ import {
 	Miniflare,
 	MiniflareCoreError,
 	MiniflareOptions,
-	parseWithRootPath,
-	PLUGINS,
 	ReplaceWorkersTypes,
 	Response,
 	viewToBuffer,
@@ -1110,7 +1108,7 @@ test("Miniflare: fetch mocking", async (t) => {
 	const origin = fetchMock.get("https://example.com");
 	origin.intercept({ method: "GET", path: "/" }).reply(200, "Mocked response!");
 
-	const mfOptions: MiniflareOptions = {
+	const mf = new Miniflare({
 		modules: true,
 		script: `export default {
 			async fetch() {
@@ -1118,19 +1116,7 @@ test("Miniflare: fetch mocking", async (t) => {
 			}
 		}`,
 		fetchMock,
-	};
-	const resultOptions = {} as MiniflareOptions;
-
-	// Verify that options with `fetchMock` can be parsed first before passing to Miniflare
-	// Regression test for https://github.com/cloudflare/workers-sdk/issues/5486
-	for (const plugin of Object.values(PLUGINS)) {
-		Object.assign(
-			resultOptions,
-			parseWithRootPath("", plugin.options, mfOptions)
-		);
-	}
-
-	const mf = new Miniflare(resultOptions);
+	});
 	t.teardown(() => mf.dispose());
 	const res = await mf.dispatchFetch("http://localhost");
 	t.is(await res.text(), "Mocked response!");

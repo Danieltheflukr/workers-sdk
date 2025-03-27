@@ -1,8 +1,4 @@
 import {
-	generateRulesMatcher,
-	replacer,
-} from "@cloudflare/workers-shared/asset-worker/src/utils/rules-engine";
-import {
 	FoundResponse,
 	InternalServerErrorResponse,
 	MethodNotAllowedResponse,
@@ -15,6 +11,7 @@ import {
 	SeeOtherResponse,
 	TemporaryRedirectResponse,
 } from "./responses";
+import { generateRulesMatcher, replacer } from "./rulesEngine";
 import type {
 	Metadata,
 	MetadataHeadersEntries,

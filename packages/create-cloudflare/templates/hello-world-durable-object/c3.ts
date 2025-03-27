@@ -1,9 +1,9 @@
 export default {
 	configVersion: 1,
 	id: "hello-world-durable-object",
-	displayName: "Worker + Durable Objects",
+	displayName: "Hello World Worker Using Durable Objects",
 	description:
-		"For multiplayer apps using WebSockets, or when you need synchronization",
+		"Get started with a basic stateful app to build projects like real-time chats, collaborative apps, and multiplayer games",
 	platform: "workers",
 	copyFiles: {
 		variants: {

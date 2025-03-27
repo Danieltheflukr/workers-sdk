@@ -6,19 +6,33 @@ import os from "node:os";
 import path from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { fetch } from "undici";
-import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
-import { unstable_startWorker } from "wrangler";
-import { wranglerEntryPath } from "../../shared/src/run-wrangler-long-lived";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import {
+	runWranglerDev,
+	wranglerEntryPath,
+} from "../../shared/src/run-wrangler-long-lived";
 
 async function getTmpDir() {
 	return fs.mkdtemp(path.join(os.tmpdir(), "wrangler-modules-"));
 }
 
-type WranglerDev = Awaited<ReturnType<typeof unstable_startWorker>>;
+type WranglerDev = Awaited<ReturnType<typeof runWranglerDev>>;
 function get(worker: WranglerDev, pathname: string) {
-	const url = `http://example.com${pathname}`;
+	const url = `http://${worker.ip}:${worker.port}${pathname}`;
 	// Disable Miniflare's pretty error page, so we can parse errors as JSON
-	return worker.fetch(url, { headers: { "MF-Disable-Pretty-Error": "true" } });
+	return fetch(url, { headers: { "MF-Disable-Pretty-Error": "true" } });
+}
+
+async function retry<T>(closure: () => Promise<T>, max = 30): Promise<T> {
+	for (let attempt = 1; attempt <= max; attempt++) {
+		try {
+			return await closure();
+		} catch (e) {
+			if (attempt === max) throw e;
+		}
+		await setTimeout(1_000);
+	}
+	assert.fail("Unreachable");
 }
 
 describe("find_additional_modules dev", () => {
@@ -38,12 +52,10 @@ describe("find_additional_modules dev", () => {
 			path.join(tmpDir, "wrangler.toml")
 		);
 
-		worker = await unstable_startWorker({
-			config: path.join(tmpDir, "wrangler.toml"),
-		});
+		worker = await runWranglerDev(tmpDir, ["--port=0", "--inspector-port=0"]);
 	});
 	afterAll(async () => {
-		await worker.dispose();
+		await worker.stop();
 		try {
 			await fs.rm(tmpDir, { recursive: true, force: true });
 		} catch (e) {
@@ -90,19 +102,20 @@ describe("find_additional_modules dev", () => {
 			path.join(srcDir, "dynamic.js"),
 			'export default "new dynamic";'
 		);
-		await vi.waitFor(async () => {
+		await retry(async () => {
 			const res = await get(worker, "/dynamic");
 			assert.strictEqual(await res.text(), "new dynamic");
 		});
 
 		// Delete dynamically imported file
 		await fs.rm(path.join(srcDir, "lang", "en.js"));
-
-		await vi.waitFor(async () => {
-			await expect(get(worker, "/lang/en")).rejects.toThrowError(
-				'No such module "lang/en.js".'
-			);
+		const res = await retry(async () => {
+			const res = await get(worker, "/lang/en");
+			assert.strictEqual(res.status, 500);
+			return res;
 		});
+		const error = (await res.json()) as { message?: string };
+		expect(error.message).toBe('No such module "lang/en.js".');
 
 		// Create new dynamically imported file in new directory
 		await fs.mkdir(path.join(srcDir, "lang", "en"));
@@ -110,7 +123,7 @@ describe("find_additional_modules dev", () => {
 			path.join(srcDir, "lang", "en", "us.js"),
 			'export default { hello: "hey" };'
 		);
-		await vi.waitFor(async () => {
+		await retry(async () => {
 			const res = await get(worker, "/lang/en/us");
 			assert.strictEqual(await res.text(), "hey");
 		});
@@ -120,7 +133,7 @@ describe("find_additional_modules dev", () => {
 			path.join(srcDir, "lang", "en", "us.js"),
 			'export default { hello: "bye" };'
 		);
-		await vi.waitFor(async () => {
+		await retry(async () => {
 			const res = await get(worker, "/lang/en/us");
 			assert.strictEqual(await res.text(), "bye");
 		});
@@ -161,7 +174,7 @@ describe("find_additional_modules deploy", () => {
 
 			// src/index.ts
 			import text from "./text.txt";
-			var index_default = {
+			var src_default = {
 			  async fetch(request) {
 			    const url = new URL(request.url);
 			    if (url.pathname === "/dep") {
@@ -184,7 +197,7 @@ describe("find_additional_modules deploy", () => {
 			  }
 			};
 			export {
-			  index_default as default
+			  src_default as default
 			};
 			//# sourceMappingURL=index.js.map
 			"

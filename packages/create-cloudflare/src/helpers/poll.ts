@@ -22,7 +22,7 @@ export const poll = async (url: string): Promise<boolean> => {
 	const domain = new URL(url).host;
 	const s = spinner();
 
-	s.start("Waiting for DNS to propagate. This might take a few minutes.");
+	s.start("Waiting for DNS to propagate");
 
 	// Start out by sleeping for 10 seconds since it's unlikely DNS changes will
 	// have propogated before then
@@ -47,9 +47,7 @@ const pollDns = async (
 	s: ReturnType<typeof spinner>,
 ) => {
 	while (Date.now() - start < TIMEOUT) {
-		s.update(
-			`Waiting for DNS to propagate. This might take a few minutes. (${secondsSince(start)}s)`,
-		);
+		s.update(`Waiting for DNS to propagate (${secondsSince(start)}s)`);
 		if (await isDomainResolvable(domain)) {
 			s.stop(`${brandColor("DNS propagation")} ${dim("complete")}.`);
 			return;

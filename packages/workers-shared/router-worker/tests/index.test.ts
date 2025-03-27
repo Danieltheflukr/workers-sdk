@@ -1,7 +1,6 @@
 import { createExecutionContext } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { default as worker } from "../src/index";
-import type { Env } from "../src/index";
 
 describe("unit tests", async () => {
 	it("fails if specify running user worker ahead of assets, without user worker", async () => {
@@ -13,7 +12,7 @@ describe("unit tests", async () => {
 				invoke_user_worker_ahead_of_assets: true,
 				has_user_worker: false,
 			},
-		} as Env;
+		} as typeof env;
 
 		void expect(
 			async () => await worker.fetch(request, env, ctx)
@@ -44,7 +43,7 @@ describe("unit tests", async () => {
 					return true;
 				},
 			},
-		} as Env;
+		} as typeof env;
 
 		const response = await worker.fetch(request, env, ctx);
 		expect(await response.text()).toEqual("hello from user worker");
@@ -67,7 +66,7 @@ describe("unit tests", async () => {
 					return true;
 				},
 			},
-		} as Env;
+		} as typeof env;
 
 		const response = await worker.fetch(request, env, ctx);
 		expect(await response.text()).toEqual("hello from asset worker");
@@ -89,7 +88,7 @@ describe("unit tests", async () => {
 					return true;
 				},
 			},
-		} as Env;
+		} as typeof env;
 
 		const response = await worker.fetch(request, env, ctx);
 		expect(await response.text()).toEqual("hello from asset worker");

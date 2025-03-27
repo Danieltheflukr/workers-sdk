@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { execSync } from "node:child_process";
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 if (require.main === module) {
@@ -23,11 +23,10 @@ export function deployNonNpmPackages(
 ) {
 	let deployedPackageCount = 0;
 	console.log("Checking for non-npm packages to deploy...");
-	const deploymentErrors = new Map<string, string>();
 	for (const pkg of updatedPackages) {
 		if (deployablePackageNames.has(pkg.name)) {
 			console.log(`Package "${pkg.name}@${pkg.version}": deploying...`);
-			deployPackage(pkg.name, deploymentErrors);
+			deployPackage(pkg.name);
 			deployedPackageCount++;
 		} else {
 			console.log(
@@ -40,10 +39,6 @@ export function deployNonNpmPackages(
 	} else {
 		console.log(`Deployed ${deployedPackageCount} non-npm packages.`);
 	}
-	writeFileSync(
-		"deployment-status.json",
-		JSON.stringify(Object.fromEntries(deploymentErrors.entries()))
-	);
 }
 
 /**
@@ -115,10 +110,7 @@ export function findDeployablePackageNames(): Set<string> {
  *
  * @param pkgName the package to deploy
  */
-export function deployPackage(
-	pkgName: string,
-	deploymentErrors: Map<string, string>
-) {
+export function deployPackage(pkgName: string) {
 	try {
 		execSync(`pnpm -F ${pkgName} run deploy`, {
 			env: process.env,
@@ -130,7 +122,6 @@ export function deployPackage(
 			"Work out why this happened and then potentially run a manual deployment."
 		);
 		console.error(e);
-		deploymentErrors.set(pkgName, String(e));
 	}
 }
 

@@ -22,6 +22,7 @@ describe("d1", () => {
 			  wrangler d1 insights <name>     Experimental command. Get information about the queries run on a D1 database.
 			  wrangler d1 create <name>       Create D1 database
 			  wrangler d1 delete <name>       Delete D1 database
+			  wrangler d1 backup              Interact with D1 backups
 			  wrangler d1 execute <database>  Execute a command or SQL file
 			  wrangler d1 export <name>       Export the contents or schema of your database as a .sql file
 			  wrangler d1 time-travel         Use Time Travel to restore, fork or copy a database at a specific point-in-time
@@ -29,7 +30,6 @@ describe("d1", () => {
 
 			GLOBAL FLAGS
 			  -c, --config   Path to Wrangler configuration file  [string]
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -e, --env      Environment to use for operations, and for selecting .env and .dev.vars files  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"
@@ -58,6 +58,7 @@ describe("d1", () => {
 			  wrangler d1 insights <name>     Experimental command. Get information about the queries run on a D1 database.
 			  wrangler d1 create <name>       Create D1 database
 			  wrangler d1 delete <name>       Delete D1 database
+			  wrangler d1 backup              Interact with D1 backups
 			  wrangler d1 execute <database>  Execute a command or SQL file
 			  wrangler d1 export <name>       Export the contents or schema of your database as a .sql file
 			  wrangler d1 time-travel         Use Time Travel to restore, fork or copy a database at a specific point-in-time
@@ -65,7 +66,6 @@ describe("d1", () => {
 
 			GLOBAL FLAGS
 			  -c, --config   Path to Wrangler configuration file  [string]
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -e, --env      Environment to use for operations, and for selecting .env and .dev.vars files  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"
@@ -95,7 +95,6 @@ describe("d1", () => {
 
 			GLOBAL FLAGS
 			  -c, --config   Path to Wrangler configuration file  [string]
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -e, --env      Environment to use for operations, and for selecting .env and .dev.vars files  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"
@@ -124,7 +123,6 @@ describe("d1", () => {
 
 			GLOBAL FLAGS
 			  -c, --config   Path to Wrangler configuration file  [string]
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -e, --env      Environment to use for operations, and for selecting .env and .dev.vars files  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"

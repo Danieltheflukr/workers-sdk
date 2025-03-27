@@ -1,11 +1,12 @@
 import { readFileSync } from "fs";
-import { readFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { Miniflare } from "miniflare";
 import { version } from "workerd";
 import { logger } from "../../logger";
+import { ensureDirectoryExists } from "../../utils/filesystem";
 import type { Config } from "../../config/config";
 
-const DEFAULT_OUTFILE_RELATIVE_PATH = "worker-configuration.d.ts";
+const DEFAULT_OUTFILE_RELATIVE_PATH = "./.wrangler/types/runtime.d.ts";
 
 /**
  * Generates runtime types for a Workers project based on the provided project configuration.
@@ -41,28 +42,20 @@ export async function generateRuntimeTypes({
 }: {
 	config: Pick<Config, "compatibility_date" | "compatibility_flags">;
 	outFile?: string;
-}): Promise<{ runtimeHeader: string; runtimeTypes: string }> {
+}) {
 	if (!compatibility_date) {
 		throw new Error("Config must have a compatibility date.");
 	}
 
-	const header = `// Runtime types generated with workerd@${version} ${compatibility_date} ${compatibility_flags.sort().join(",")}`;
+	await ensureDirectoryExists(outFile);
+
+	const header = `// Runtime types generated with workerd@${version} ${compatibility_date} ${compatibility_flags.join(",")}`;
 
 	try {
-		const lines = (await readFile(outFile, "utf8")).split("\n");
-		const existingHeader = lines.find((line) =>
-			line.startsWith("// Runtime types generated with workerd@")
-		);
-		const existingTypesStart = lines.findIndex(
-			(line) => line === "// Begin runtime types"
-		);
-		if (existingHeader === header && existingTypesStart !== -1) {
+		const existingTypes = await readFile(outFile, "utf8");
+		if (existingTypes.split("\n")[0] === header) {
 			logger.debug("Using cached runtime types: ", header);
-
-			return {
-				runtimeHeader: header,
-				runtimeTypes: lines.slice(existingTypesStart + 1).join("\n"),
-			};
+			return { outFile };
 		}
 	} catch (e) {
 		if ((e as { code: string }).code !== "ENOENT") {
@@ -78,7 +71,11 @@ export async function generateRuntimeTypes({
 		),
 	});
 
-	return { runtimeHeader: header, runtimeTypes: types };
+	await writeFile(outFile, `${header}\n${types}`, "utf8");
+
+	return {
+		outFile,
+	};
 }
 
 /**

@@ -6,7 +6,6 @@ import type { ArgumentsCamelCase, Argv, CommandModule } from "yargs";
  */
 export interface CommonYargsOptions {
 	v: boolean | undefined;
-	cwd: string | undefined;
 	config: string | undefined;
 	env: string | undefined;
 	"experimental-provision": boolean | undefined;

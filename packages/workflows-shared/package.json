@@ -1,6 +1,6 @@
 {
 	"name": "@cloudflare/workflows-shared",
-	"version": "0.3.1",
+	"version": "0.2.2",
 	"private": true,
 	"description": "Package that is used at Cloudflare to power some internal features of Cloudflare Workflows.",
 	"keywords": [
@@ -30,8 +30,7 @@
 		"clean": "rimraf dist",
 		"deploy": "echo 'no deploy'",
 		"dev": "pnpm run bundle:local-binding --watch",
-		"test:ci": "vitest run",
-		"test:watch": "vitest"
+		"test:ci": "echo 'no tests'"
 	},
 	"dependencies": {
 		"heap-js": "^2.5.0",
@@ -41,17 +40,16 @@
 	},
 	"devDependencies": {
 		"@cloudflare/eslint-config-worker": "workspace:*",
-		"@cloudflare/vitest-pool-workers": "^0.7.0",
 		"@cloudflare/workers-tsconfig": "workspace:*",
-		"@cloudflare/workers-types": "^4.20250320.0",
+		"@cloudflare/workers-types": "^4.20250204.0",
 		"@types/mime": "^3.0.4",
-		"esbuild": "catalog:default",
+		"esbuild": "0.17.19",
 		"rimraf": "catalog:default",
 		"typescript": "catalog:default",
 		"vitest": "catalog:default"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=16.7.0"
 	},
 	"volta": {
 		"extends": "../../package.json"

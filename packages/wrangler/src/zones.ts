@@ -1,7 +1,6 @@
 import { fetchListResult } from "./cfetch";
 import { configFileName } from "./config";
 import { UserError } from "./errors";
-import { retryOnAPIFailure } from "./utils/retry";
 import type { Route } from "./config/environment";
 
 /**
@@ -51,13 +50,10 @@ export function getHostFromRoute(route: Route): string | undefined {
  * - We try to extract a host from it
  * - We try to get a zone id from the host
  */
-export async function getZoneForRoute(
-	from: {
-		route: Route;
-		accountId: string;
-	},
-	zoneIdCache: ZoneIdCache = new Map()
-): Promise<Zone | undefined> {
+export async function getZoneForRoute(from: {
+	route: Route;
+	accountId: string;
+}): Promise<Zone | undefined> {
 	const { route, accountId } = from;
 	const host = getHostFromRoute(route);
 	let id: string | undefined;
@@ -65,15 +61,9 @@ export async function getZoneForRoute(
 	if (typeof route === "object" && "zone_id" in route) {
 		id = route.zone_id;
 	} else if (typeof route === "object" && "zone_name" in route) {
-		id = await getZoneIdFromHost(
-			{
-				host: route.zone_name,
-				accountId,
-			},
-			zoneIdCache
-		);
+		id = await getZoneIdFromHost({ host: route.zone_name, accountId });
 	} else if (host) {
-		id = await getZoneIdFromHost({ host, accountId }, zoneIdCache);
+		id = await getZoneIdFromHost({ host, accountId });
 	}
 
 	return id && host ? { id, host } : undefined;
@@ -113,33 +103,20 @@ export async function getZoneIdForPreview(from: {
 	routes: Route[] | undefined;
 	accountId: string;
 }) {
-	const zoneIdCache: ZoneIdCache = new Map();
 	const { host, routes, accountId } = from;
 	let zoneId: string | undefined;
 	if (host) {
-		zoneId = await getZoneIdFromHost({ host, accountId }, zoneIdCache);
+		zoneId = await getZoneIdFromHost({ host, accountId });
 	}
 	if (!zoneId && routes) {
 		const firstRoute = routes[0];
-		const zone = await getZoneForRoute(
-			{
-				route: firstRoute,
-				accountId,
-			},
-			zoneIdCache
-		);
+		const zone = await getZoneForRoute({ route: firstRoute, accountId });
 		if (zone) {
 			zoneId = zone.id;
 		}
 	}
 	return zoneId;
 }
-
-/**
- * A mapping from account:host to zone id.
- */
-export type ZoneIdCache = Map<string, Promise<string | null>>;
-
 /**
  * Given something that resembles a host, try to infer a zone id from it.
  *
@@ -147,38 +124,24 @@ export type ZoneIdCache = Map<string, Promise<string | null>>;
  * For each domain-like part of the host (e.g. w.x.y.z) try to get a zone id for it by
  * lopping off subdomains until we get a hit from the API.
  */
-async function getZoneIdFromHost(
-	from: {
-		host: string;
-		accountId: string;
-	},
-	zoneIdCache: ZoneIdCache
-): Promise<string> {
+async function getZoneIdFromHost(from: {
+	host: string;
+	accountId: string;
+}): Promise<string> {
 	const hostPieces = from.host.split(".");
 
 	while (hostPieces.length > 1) {
-		const cacheKey = `${from.accountId}:${hostPieces.join(".")}`;
-		if (!zoneIdCache.has(cacheKey)) {
-			zoneIdCache.set(
-				cacheKey,
-				retryOnAPIFailure(() =>
-					fetchListResult<{ id: string }>(
-						`/zones`,
-						{},
-						new URLSearchParams({
-							name: hostPieces.join("."),
-							"account.id": from.accountId,
-						})
-					)
-				).then((zones) => zones[0]?.id ?? null)
-			);
+		const zones = await fetchListResult<{ id: string }>(
+			`/zones`,
+			{},
+			new URLSearchParams({
+				name: hostPieces.join("."),
+				"account.id": from.accountId,
+			})
+		);
+		if (zones.length > 0) {
+			return zones[0].id;
 		}
-
-		const cachedZone = await zoneIdCache.get(cacheKey);
-		if (cachedZone) {
-			return cachedZone;
-		}
-
 		hostPieces.shift();
 	}
 

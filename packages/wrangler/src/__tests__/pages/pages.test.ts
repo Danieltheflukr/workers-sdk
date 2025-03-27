@@ -31,7 +31,6 @@ describe("pages", () => {
 			  wrangler pages download                        Download settings from your project
 
 			GLOBAL FLAGS
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"
 		`);
@@ -51,7 +50,6 @@ describe("pages", () => {
 			  command    The proxy command to run  [deprecated]  [string]
 
 			GLOBAL FLAGS
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]
 
@@ -63,7 +61,7 @@ describe("pages", () => {
 			      --inspector-port                             Port for devtools to connect to  [number]
 			      --proxy                                      The port to proxy (where the static assets are served)  [deprecated] [number]
 			      --script-path                                The location of the single Worker script if not using functions  [default: _worker.js]  [deprecated] [string]
-			      --no-bundle                                  Whether to run bundling on \`_worker.js\`  [boolean]
+			      --no-bundle                                  Whether to run bundling on \`_worker.js\`  [boolean] [default: false]
 			  -b, --binding                                    Bind variable/secret (KEY=VALUE)  [array]
 			  -k, --kv                                         KV namespace to bind (--kv KV_BINDING)  [array]
 			      --d1                                         D1 database to bind (--d1 D1_BINDING)  [array]
@@ -99,7 +97,6 @@ describe("pages", () => {
 			  wrangler pages project delete [project-name]  Delete a Cloudflare Pages project
 
 			GLOBAL FLAGS
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"
 		`);
@@ -120,7 +117,6 @@ describe("pages", () => {
 			  wrangler pages deployment tail [deployment]   Start a tailing session for a project's deployment and livestream logs from your Functions
 
 			GLOBAL FLAGS
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"
 		`);
@@ -139,7 +135,6 @@ describe("pages", () => {
 			  directory  The directory of static files to upload  [string]
 
 			GLOBAL FLAGS
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]
 
@@ -150,7 +145,7 @@ describe("pages", () => {
 			      --commit-message      The commit message to attach to this deployment  [string]
 			      --commit-dirty        Whether or not the workspace should be considered dirty for this deployment  [boolean]
 			      --skip-caching        Skip asset caching which speeds up builds  [boolean]
-			      --no-bundle           Whether to run bundling on \`_worker.js\` before deploying  [boolean]
+			      --no-bundle           Whether to run bundling on \`_worker.js\` before deploying  [boolean] [default: false]
 			      --upload-source-maps  Whether to upload any server-side sourcemaps with this deployment  [boolean] [default: false]"
 		`);
 	});
@@ -166,12 +161,11 @@ describe("pages", () => {
 
 			COMMANDS
 			  wrangler pages secret put <key>     Create or update a secret variable for a Pages project
-			  wrangler pages secret bulk [file]   Bulk upload secrets for a Pages project
+			  wrangler pages secret bulk [json]   Bulk upload secrets for a Pages project
 			  wrangler pages secret delete <key>  Delete a secret variable from a Pages project
 			  wrangler pages secret list          List all secrets for a Pages project
 
 			GLOBAL FLAGS
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"
 		`);
@@ -190,7 +184,6 @@ describe("pages", () => {
 			  wrangler pages download config [projectName]  Experimental: Download your Pages project config as a Wrangler configuration file
 
 			GLOBAL FLAGS
-			      --cwd      Run as if Wrangler was started in the specified directory instead of the current working directory  [string]
 			  -h, --help     Show help  [boolean]
 			  -v, --version  Show version number  [boolean]"
 		`);

@@ -1,15 +1,12 @@
-import { defineWorkersProject } from "@cloudflare/vitest-pool-workers/config";
+import { defineProject, mergeConfig } from "vitest/config";
+import configShared from "../../vitest.shared";
 
-export default defineWorkersProject({
-	test: {
-		poolOptions: {
-			workers: {
-				isolatedStorage: false,
-				singleWorker: true,
-				miniflare: {
-					compatibilityDate: "2025-01-01",
-				},
-			},
+export default mergeConfig(
+	configShared,
+	defineProject({
+		test: {
+			include: ["**/__tests__/**/*.{test,spec}.{ts,js,tsx,jsx}"],
+			setupFiles: "./vite.setup.ts",
 		},
-	},
-});
+	})
+);

@@ -5,7 +5,6 @@ import { createCommand, createCommandOptionalYargs } from "./create";
 import { curlCommand, yargsCurl } from "./curl";
 import { deleteCommand, deleteCommandOptionalYargs } from "./delete";
 import { registriesCommand } from "./images/images";
-import { imagesCommand } from "./images/list";
 import { listCommand, listDeploymentsYargs } from "./list";
 import { modifyCommand, modifyCommandOptionalYargs } from "./modify";
 import { sshCommand } from "./ssh/ssh";
@@ -82,10 +81,5 @@ export const cloudchamber = (
 			"push a tagged image to a Cloudflare managed registry, which is automatically integrated with your account",
 			(args) => pushYargs(args),
 			(args) => handleFailure(pushCommand)(args)
-		)
-		.command(
-			"images",
-			"perform operations on images in your clouchamber registry",
-			(args) => imagesCommand(args).command(subHelp)
 		);
 };

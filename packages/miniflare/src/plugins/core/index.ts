@@ -33,7 +33,7 @@ import {
 	CoreHeaders,
 	viewToBuffer,
 } from "../../workers";
-import { RPC_PROXY_SERVICE_NAME } from "../assets/constants";
+import { ROUTER_SERVICE_NAME } from "../assets/constants";
 import { getCacheServiceName } from "../cache";
 import { DURABLE_OBJECTS_STORAGE_SERVICE_NAME } from "../do";
 import {
@@ -123,8 +123,6 @@ const CoreOptionsSchemaInput = z.intersection(
 		compatibilityDate: z.string().optional(),
 		compatibilityFlags: z.string().array().optional(),
 
-		unsafeInspectorProxy: z.boolean().optional(),
-
 		routes: z.string().array().optional(),
 
 		bindings: z.record(JsonSchema).optional(),
@@ -150,9 +148,8 @@ const CoreOptionsSchemaInput = z.intersection(
 		unsafeEvalBinding: z.string().optional(),
 		unsafeUseModuleFallbackService: z.boolean().optional(),
 
-		/** Used to set the vitest pool worker SELF binding to point to the Router Worker if there are assets.
-		 (If there are assets but we're not using vitest, the miniflare entry worker can point directly to
-		 Router Worker)
+		/** Used to set the vitest pool worker SELF binding to point to the router worker if there are assets.
+		 (If there are assets but we're not using vitest, the miniflare entry worker can point directly to RW.)
 		 */
 		hasAssetsAndIsVitest: z.boolean().optional(),
 	})
@@ -166,11 +163,6 @@ export const CoreOptionsSchema = CoreOptionsSchemaInput.transform((value) => {
 				"Only one of `outboundService` or `fetchMock` may be specified per worker"
 			);
 		}
-
-		// The `fetchMock` option is used to construct the `outboundService` only
-		// Removing it from the output allows us to re-parse the options later
-		// This allows us to validate the options and then feed them into Miniflare without issue.
-		value.fetchMock = undefined;
 		value.outboundService = (req) => fetch(req, { dispatcher: fetchMock });
 	}
 	return value;
@@ -189,7 +181,6 @@ export const CoreSharedOptionsSchema = z.object({
 	httpsCertPath: z.string().optional(),
 
 	inspectorPort: z.number().optional(),
-
 	verbose: z.boolean().optional(),
 
 	log: z.instanceof(Log).optional(),
@@ -258,7 +249,7 @@ function getCustomServiceDesignator(
 		// Worker with entrypoint
 		if ("name" in service) {
 			if (service.name === kCurrentWorker) {
-				// TODO when fetch on WorkerEntrypoints with assets is fixed in dev: point this Router Worker if assets are present.
+				// TODO when fetch on WorkerEntrypoints with assets is fixed in dev: point this router worker if assets are present.
 				serviceName = getUserServiceName(refererName);
 			} else {
 				serviceName = getUserServiceName(service.name);
@@ -269,10 +260,9 @@ function getCustomServiceDesignator(
 			serviceName = getBuiltinServiceName(workerIndex, kind, name);
 		}
 	} else if (service === kCurrentWorker) {
-		// Sets SELF binding to point to the (assets) RPC Proxy Worker
-		// if assets are present.
+		// Sets SELF binding to point to router worker instead if assets are present.
 		serviceName = hasAssetsAndIsVitest
-			? `${RPC_PROXY_SERVICE_NAME}:${refererName}`
+			? `${ROUTER_SERVICE_NAME}:${refererName}`
 			: getUserServiceName(refererName);
 	} else {
 		// Regular user worker

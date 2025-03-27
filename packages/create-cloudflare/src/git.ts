@@ -1,4 +1,3 @@
-import assert from "node:assert";
 import { updateStatus } from "@cloudflare/cli";
 import { brandColor, dim } from "@cloudflare/cli/colors";
 import { spinner } from "@cloudflare/cli/interactive";
@@ -27,11 +26,16 @@ export const offerGit = async (ctx: C3Context) => {
 		return; // bail early
 	}
 
-	ctx.args.git ??= await processArgument(ctx.args, "git", {
+	const insideGitRepo = await isInsideGitRepo(ctx.project.path);
+
+	if (insideGitRepo) {
+		ctx.args.git = true;
+		return;
+	}
+
+	ctx.args.git = await processArgument(ctx.args, "git", {
 		type: "confirm",
-		question: ctx.gitRepoAlreadyExisted
-			? "You're in an existing git repository. Do you want to use git for version control?"
-			: "Do you want to use git for version control?",
+		question: "Do you want to use git for version control?",
 		label: "git",
 		defaultValue: C3_DEFAULTS.git,
 	});
@@ -51,22 +55,14 @@ export const offerGit = async (ctx: C3Context) => {
 		return;
 	}
 
-	// Only initialize git if we're not in an existing git repository
-	if (!ctx.gitRepoAlreadyExisted) {
-		await initializeGit(ctx.project.path);
-	}
+	await initializeGit(ctx.project.path);
 };
 
 export const gitCommit = async (ctx: C3Context) => {
-	assert.notStrictEqual(
-		ctx.args.git,
-		undefined,
-		"Expected git context to be defined by now",
-	);
 	// Note: createCommitMessage stores the message in ctx so that it can
 	//       be used later even if we're not in a git repository, that's why
 	//       we unconditionally run this command here
-	ctx.commitMessage = await createCommitMessage(ctx);
+	const commitMessage = await createCommitMessage(ctx);
 
 	if (!ctx.args.git) {
 		return;
@@ -78,6 +74,13 @@ export const gitCommit = async (ctx: C3Context) => {
 		return;
 	}
 
+	const gitInstalled = await isGitInstalled();
+	const gitInitialized = await isInsideGitRepo(ctx.project.path);
+
+	if (!gitInstalled || !gitInitialized) {
+		return;
+	}
+
 	const s = spinner();
 	s.start("Committing new files");
 
@@ -86,7 +89,7 @@ export const gitCommit = async (ctx: C3Context) => {
 		cwd: ctx.project.path,
 	});
 
-	await runCommand(["git", "commit", "-m", ctx.commitMessage], {
+	await runCommand(["git", "commit", "-m", commitMessage], {
 		silent: true,
 		cwd: ctx.project.path,
 	});
@@ -104,6 +107,7 @@ const createCommitMessage = async (ctx: C3Context) => {
 	const packageManager = detectPackageManager();
 
 	const gitVersion = await getGitVersion();
+	const insideRepo = await isInsideGitRepo(ctx.project.path);
 
 	const details = [
 		{ key: "C3", value: `create-cloudflare@${version}` },
@@ -122,7 +126,7 @@ const createCommitMessage = async (ctx: C3Context) => {
 		},
 		{
 			key: "git",
-			value: gitVersion ?? "N/A",
+			value: insideRepo ? gitVersion : "N/A",
 		},
 	];
 
@@ -131,6 +135,8 @@ const createCommitMessage = async (ctx: C3Context) => {
 		.join("\n")}\n`;
 
 	const commitMessage = `${header}\n\n${body}\n`;
+
+	ctx.commitMessage = commitMessage;
 
 	return commitMessage;
 };

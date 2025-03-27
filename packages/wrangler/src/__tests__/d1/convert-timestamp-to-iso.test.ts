@@ -3,7 +3,7 @@ import { convertTimestampToISO } from "../../d1/timeTravel/utils";
 
 describe("convertTimestampToISO", () => {
 	beforeAll(() => {
-		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+		vi.useFakeTimers();
 		//lock time to 2023-08-01 UTC
 		vi.setSystemTime(new Date(2023, 7, 1));
 	});

@@ -11,7 +11,7 @@ import defaultHashes from "./defaultHashes";
 import EditorPane from "./EditorPane";
 import ToolsPane from "./ToolsPane";
 import { TopBar } from "./TopBar";
-import { compressTextWorker, useDraftWorker } from "./useDraftWorker";
+import { useDraftWorker } from "./useDraftWorker";
 
 type DraftWorkerWithPreviewUrl = ReturnType<typeof useDraftWorker> & {
 	previewUrl: string;
@@ -73,26 +73,11 @@ export default function QuickEditor() {
 	useEffect(() => {
 		if (initialWorkerContentHash === "") {
 			const suffix = location.pathname.slice("/playground".length);
-
-			const workerDefinition =
+			setInitialHash(
 				suffix in defaultHashes
 					? defaultHashes[suffix as keyof typeof defaultHashes]
-					: defaultHashes["/"];
-
-			const today = new Date();
-			const year = String(today.getUTCFullYear());
-			const month = String(today.getUTCMonth() + 1).padStart(2, "0");
-			const date = String(today.getUTCDate()).padStart(2, "0");
-
-			workerDefinition.worker = workerDefinition.worker.replace(
-				"$REPLACE_COMPAT_DATE",
-				`${year}-${month}-${date}`
+					: defaultHashes["/"]
 			);
-
-			void compressTextWorker(
-				workerDefinition.contentType,
-				workerDefinition.worker
-			).then(setInitialHash);
 		}
 	}, [initialWorkerContentHash]);
 

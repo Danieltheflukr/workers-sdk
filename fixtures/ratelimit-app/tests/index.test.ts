@@ -1,32 +1,35 @@
-import path, { resolve } from "path";
+import { resolve } from "path";
+import { fetch } from "undici";
 import { afterAll, beforeAll, describe, it } from "vitest";
-import { unstable_startWorker } from "wrangler";
-
-const basePath = resolve(__dirname, "..");
+import { runWranglerDev } from "../../shared/src/run-wrangler-long-lived";
 
 describe("'wrangler dev' correctly renders pages", () => {
-	let worker: Awaited<ReturnType<typeof unstable_startWorker>>;
+	let ip: string,
+		port: number,
+		stop: (() => Promise<unknown>) | undefined,
+		getOutput: () => string;
 
 	beforeAll(async () => {
-		worker = await unstable_startWorker({
-			config: path.join(basePath, "wrangler.toml"),
-		});
+		({ ip, port, stop, getOutput } = await runWranglerDev(
+			resolve(__dirname, ".."),
+			["--local", "--port=0", "--inspector-port=0"]
+		));
 	});
 
 	afterAll(async () => {
-		await worker.dispose();
+		await stop?.();
 	});
 
 	it("ratelimit binding is defined ", async ({ expect }) => {
-		let response = await worker.fetch(`http://example.com`);
+		let response = await fetch(`http://${ip}:${port}/`);
 		let content = await response.text();
 		expect(content).toEqual("Success");
 
-		response = await worker.fetch(`http://example.com`);
+		response = await fetch(`http://${ip}:${port}/`);
 		content = await response.text();
 		expect(content).toEqual("Success");
 
-		response = await worker.fetch(`http://example.com`);
+		response = await fetch(`http://${ip}:${port}/`);
 		content = await response.text();
 		expect(content).toEqual("Slow down");
 	});

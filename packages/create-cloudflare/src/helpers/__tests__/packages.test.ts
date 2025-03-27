@@ -25,7 +25,7 @@ describe("Package Helpers", () => {
 			await npmInstall(createTestContext());
 
 			expect(vi.mocked(runCommand)).toHaveBeenCalledWith(
-				["npm", "install", "--legacy-peer-deps"],
+				["npm", "install"],
 				expect.anything(),
 			);
 		});
@@ -45,40 +45,28 @@ describe("Package Helpers", () => {
 		type TestCase = {
 			pm: PmName;
 			initialArgs: string[];
-			additionalArgs?: string[];
 		};
 
 		const cases: TestCase[] = [
-			{
-				pm: "npm",
-				initialArgs: ["npm", "install"],
-				additionalArgs: ["--legacy-peer-deps"],
-			},
+			{ pm: "npm", initialArgs: ["npm", "install"] },
 			{ pm: "pnpm", initialArgs: ["pnpm", "install"] },
 			{ pm: "bun", initialArgs: ["bun", "add"] },
 			{ pm: "yarn", initialArgs: ["yarn", "add"] },
 		];
 
-		test.each(cases)(
-			"with $pm",
-			async ({ pm, initialArgs, additionalArgs }) => {
-				mockPackageManager(pm);
-				const packages = ["foo", "bar", "baz"];
-				await installPackages(packages);
+		test.each(cases)("with $pm", async ({ pm, initialArgs }) => {
+			mockPackageManager(pm);
+			const packages = ["foo", "bar", "baz"];
+			await installPackages(packages);
 
-				expect(vi.mocked(runCommand)).toHaveBeenCalledWith(
-					[...initialArgs, ...packages, ...(additionalArgs ?? [])],
-					expect.anything(),
-				);
-			},
-		);
+			expect(vi.mocked(runCommand)).toHaveBeenCalledWith(
+				[...initialArgs, ...packages],
+				expect.anything(),
+			);
+		});
 
 		const devCases: TestCase[] = [
-			{
-				pm: "npm",
-				initialArgs: ["npm", "install", "--save-dev"],
-				additionalArgs: ["--legacy-peer-deps"],
-			},
+			{ pm: "npm", initialArgs: ["npm", "install", "--save-dev"] },
 			{ pm: "pnpm", initialArgs: ["pnpm", "install", "--save-dev"] },
 			{ pm: "bun", initialArgs: ["bun", "add", "-d"] },
 			{ pm: "yarn", initialArgs: ["yarn", "add", "-D"] },
@@ -86,13 +74,13 @@ describe("Package Helpers", () => {
 
 		test.each(devCases)(
 			"with $pm (dev = true)",
-			async ({ pm, initialArgs, additionalArgs }) => {
+			async ({ pm, initialArgs }) => {
 				mockPackageManager(pm);
 				const packages = ["foo", "bar", "baz"];
 				await installPackages(packages, { dev: true });
 
 				expect(vi.mocked(runCommand)).toHaveBeenCalledWith(
-					[...initialArgs, ...packages, ...(additionalArgs ?? [])],
+					[...initialArgs, ...packages],
 					expect.anything(),
 				);
 			},
@@ -103,7 +91,7 @@ describe("Package Helpers", () => {
 		await installWrangler();
 
 		expect(vi.mocked(runCommand)).toHaveBeenCalledWith(
-			["npm", "install", "--save-dev", "wrangler@latest", "--legacy-peer-deps"],
+			["npm", "install", "--save-dev", "wrangler@latest"],
 			expect.anything(),
 		);
 	});

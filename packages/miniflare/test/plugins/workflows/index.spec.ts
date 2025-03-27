@@ -51,6 +51,7 @@ test("persists Workflow data on file-system between runs", async (t) => {
 	let test = "";
 	while (performance.now() - begin < 2000) {
 		const res = await mf.dispatchFetch("http://localhost");
+		console.log(test);
 		test = await res.text();
 		if (
 			test ===
@@ -63,7 +64,7 @@ test("persists Workflow data on file-system between runs", async (t) => {
 	}
 	t.true(success, `Condition was not met in 2000ms - output is ${test}`);
 
-	// check if files were committed
+	// check if files were commited
 	const names = await fs.readdir(tmp);
 	t.deepEqual(names, ["miniflare-workflows-MY_WORKFLOW"]);
 

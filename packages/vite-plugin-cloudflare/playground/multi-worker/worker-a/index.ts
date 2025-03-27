@@ -24,13 +24,6 @@ export default {
 					result,
 				});
 			}
-			case "/rpc-method/promise-pipelining": {
-				const foo = env.WORKER_B.foo("🎉");
-				const result = await foo.bar.baz();
-				return Response.json({
-					result,
-				});
-			}
 			case "/rpc-getter": {
 				const result = await env.WORKER_B.name;
 				return Response.json({ result });
@@ -38,13 +31,6 @@ export default {
 			case "/rpc-named-entrypoint": {
 				const result = await env.NAMED_ENTRYPOINT.multiply(4, 5);
 				return Response.json({ result });
-			}
-			case "/rpc-named-entrypoint/promise-pipelining": {
-				const baz = env.NAMED_ENTRYPOINT.baz("🚀");
-				const result = await baz.bar.foo();
-				return Response.json({
-					result,
-				});
 			}
 		}
 

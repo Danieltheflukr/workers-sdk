@@ -7,7 +7,6 @@ export type HyperdriveConfig = {
 	name: string;
 	origin: PublicOrigin;
 	caching?: CachingOptions;
-	mtls?: Mtls;
 };
 
 export type OriginDatabase = {
@@ -74,19 +73,12 @@ export type CreateUpdateHyperdriveBody = {
 	name: string;
 	origin: OriginWithSecrets;
 	caching?: CachingOptions;
-	mtls?: Mtls;
 };
 
 export type PatchHyperdriveBody = {
 	name?: string;
 	origin?: OriginWithSecretsPartial;
 	caching?: CachingOptions;
-	mtls?: Mtls;
-};
-
-export type Mtls = {
-	ca_certificate_uuid?: string;
-	mtls_certificate_uuid?: string;
 };
 
 export async function createConfig(

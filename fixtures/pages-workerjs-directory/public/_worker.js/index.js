@@ -50,8 +50,7 @@ export default {
 		}
 
 		if (pathname !== "/") {
-			const file = "." + pathname;
-			return new Response((await import(file)).default);
+			return new Response((await import(`./${pathname.slice(1)}`)).default);
 		}
 
 		return env.ASSETS.fetch(request);

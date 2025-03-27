@@ -125,10 +125,7 @@ export const shouldInstallNextOnPagesEslintPlugin = async (
 };
 
 export const writeEslintrc = async (ctx: C3Context): Promise<void> => {
-	const eslintConfig = readJSON(`${ctx.project.path}/.eslintrc.json`) as {
-		plugins: string[];
-		extends: string | string[];
-	};
+	const eslintConfig = readJSON(`${ctx.project.path}/.eslintrc.json`);
 
 	eslintConfig.plugins ??= [];
 	eslintConfig.plugins.push("eslint-plugin-next-on-pages");

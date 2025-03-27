@@ -1,9 +1,8 @@
 import fs, { readFileSync } from "node:fs";
-import { basename, join } from "node:path";
-import { detectPackageManager } from "helpers/packageManagers";
+import { basename } from "node:path";
 import { beforeAll, describe, expect } from "vitest";
 import { version } from "../package.json";
-import { getFrameworkToTest } from "./frameworks/framework-to-test";
+import { getFrameworkToTest } from "./frameworkToTest";
 import {
 	isQuarantineMode,
 	keys,
@@ -15,7 +14,7 @@ import type { Suite } from "vitest";
 
 const experimental = process.env.E2E_EXPERIMENTAL === "true";
 const frameworkToTest = getFrameworkToTest({ experimental: false });
-const { name: pm } = detectPackageManager();
+
 // Note: skipIf(frameworkToTest) makes it so that all the basic C3 functionality
 //       tests are skipped in case we are testing a specific framework
 describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
@@ -82,9 +81,10 @@ describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
 				);
 
 				expect(project.path).toExist();
-				expect(output).toContain(`category Hello World Starter`);
-				expect(output).toContain(`type Worker + Assets`);
+				expect(output).toContain(`category Hello World example`);
+				expect(output).toContain(`type Hello World Worker`);
 				expect(output).toContain(`lang TypeScript`);
+				expect(output).toContain(`no git`);
 				expect(output).toContain(`no deploy`);
 			},
 		);
@@ -127,6 +127,7 @@ describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
 				expect(project.path).toExist();
 				expect(output).toContain(`type Scheduled Worker (Cron Trigger)`);
 				expect(output).toContain(`lang JavaScript`);
+				expect(output).toContain(`no git`);
 				expect(output).toContain(`no deploy`);
 			},
 		);
@@ -177,8 +178,9 @@ describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
 					);
 
 					expect(project.path).toExist();
-					expect(output).toContain(`type Worker + Assets`);
+					expect(output).toContain(`type Hello World Worker`);
 					expect(output).toContain(`lang TypeScript`);
+					expect(output).toContain(`no git`);
 					expect(output).toContain(`no deploy`);
 				} finally {
 					fs.rmSync(existingFilePath, {
@@ -269,8 +271,8 @@ describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
 				);
 
 				expect(project.path).toExist();
-				expect(output).toContain(`category Hello World Starter`);
-				expect(output).toContain(`type Worker only`);
+				expect(output).toContain(`category Hello World example`);
+				expect(output).toContain(`type Hello World Worker`);
 				expect(output).toContain(`lang Python`);
 			},
 		);
@@ -376,7 +378,7 @@ describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
 							matcher: /What would you like to start with\?/,
 							input: {
 								type: "select",
-								target: "Hello World Starter",
+								target: "Hello World example",
 								assertDefaultSelection: "Framework Starter",
 							},
 						},
@@ -384,7 +386,7 @@ describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
 							matcher: /Which template would you like to use\?/,
 							input: {
 								type: "select",
-								target: "Worker + Durable Objects",
+								target: "Hello World Worker Using Durable Objects",
 							},
 						},
 						{
@@ -398,8 +400,9 @@ describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
 							matcher: /Which template would you like to use\?/,
 							input: {
 								type: "select",
-								target: "Worker only",
-								assertDefaultSelection: "Worker + Durable Objects",
+								target: "Hello World Worker",
+								assertDefaultSelection:
+									"Hello World Worker Using Durable Objects",
 							},
 						},
 						{
@@ -414,31 +417,9 @@ describe.skipIf(experimental || frameworkToTest || isQuarantineMode())(
 				);
 
 				expect(project.path).toExist();
-				expect(output).toContain(`type Worker only`);
+				expect(output).toContain(`type Hello World Worker`);
 				expect(output).toContain(`lang JavaScript`);
 			},
 		);
-
-		test({ experimental }).skipIf(
-			process.platform === "win32" || pm === "yarn",
-		)("--existing-script", async ({ logStream, project }) => {
-			const { output } = await runC3(
-				[
-					project.path,
-					"--existing-script=existing-script-test-do-not-delete",
-					"--git=false",
-					"--no-deploy",
-				],
-				[],
-				logStream,
-			);
-			expect(output).toContain("Pre-existing Worker (from Dashboard)");
-			expect(output).toContain("Application created successfully!");
-			expect(fs.existsSync(join(project.path, "wrangler.jsonc"))).toBe(false);
-			expect(fs.existsSync(join(project.path, "wrangler.json"))).toBe(false);
-			expect(
-				fs.readFileSync(join(project.path, "wrangler.toml"), "utf8"),
-			).toContain('FOO = "bar"');
-		});
 	},
 );

@@ -7,7 +7,7 @@ import { withSourceURLs } from "../deployment-bundle/source-url";
 import { getInferredHost } from "../dev";
 import { UserError } from "../errors";
 import { logger } from "../logger";
-import { syncWorkersSite } from "../sites";
+import { syncLegacyAssets } from "../sites";
 import { requireApiToken } from "../user";
 import { isAbortError } from "../utils/isAbortError";
 import { getZoneIdForPreview } from "../zones";
@@ -114,7 +114,7 @@ export async function createRemoteWorkerInit(props: {
 		props.modules
 	);
 
-	const workersSitesAssets = await syncWorkersSite(
+	const legacyAssets = await syncLegacyAssets(
 		props.accountId,
 		// When we're using the newer service environments, we wouldn't
 		// have added the env name on to the script name. However, we must
@@ -127,11 +127,11 @@ export async function createRemoteWorkerInit(props: {
 		undefined
 	); // TODO: cancellable?
 
-	if (workersSitesAssets.manifest) {
+	if (legacyAssets.manifest) {
 		modules.push({
 			name: "__STATIC_CONTENT_MANIFEST",
 			filePath: undefined,
-			content: JSON.stringify(workersSitesAssets.manifest),
+			content: JSON.stringify(legacyAssets.manifest),
 			type: "text",
 		});
 	}
@@ -152,13 +152,13 @@ export async function createRemoteWorkerInit(props: {
 		bindings: {
 			...props.bindings,
 			kv_namespaces: (props.bindings.kv_namespaces || []).concat(
-				workersSitesAssets.namespace
-					? { binding: "__STATIC_CONTENT", id: workersSitesAssets.namespace }
+				legacyAssets.namespace
+					? { binding: "__STATIC_CONTENT", id: legacyAssets.namespace }
 					: []
 			),
 			text_blobs: {
 				...props.bindings.text_blobs,
-				...(workersSitesAssets.manifest &&
+				...(legacyAssets.manifest &&
 					props.format === "service-worker" && {
 						__STATIC_CONTENT_MANIFEST: "__STATIC_CONTENT_MANIFEST",
 					}),
@@ -175,10 +175,8 @@ export async function createRemoteWorkerInit(props: {
 			props.assets && assetsJwt
 				? {
 						jwt: assetsJwt,
-						routerConfig: props.assets.routerConfig,
+						routingConfig: props.assets.routingConfig,
 						assetConfig: props.assets.assetConfig,
-						_redirects: props.assets._redirects,
-						_headers: props.assets._headers,
 					}
 				: undefined,
 		placement: undefined, // no placement in dev

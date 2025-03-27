@@ -90,8 +90,7 @@ export interface EphemeralDirectory {
  */
 export function getWranglerTmpDir(
 	projectRoot: string | undefined,
-	prefix: string,
-	cleanup = true
+	prefix: string
 ): EphemeralDirectory {
 	projectRoot ??= process.cwd();
 	const tmpRoot = path.join(projectRoot, ".wrangler", "tmp");
@@ -101,12 +100,10 @@ export function getWranglerTmpDir(
 	const tmpDir = fs.realpathSync(fs.mkdtempSync(tmpPrefix));
 
 	const removeDir = () => {
-		if (cleanup) {
-			try {
-				return fs.rmSync(tmpDir, { recursive: true, force: true });
-			} catch (e) {
-				// This sometimes fails on Windows with EBUSY
-			}
+		try {
+			return fs.rmSync(tmpDir, { recursive: true, force: true });
+		} catch (e) {
+			// This sometimes fails on Windows with EBUSY
 		}
 	};
 	const removeExitListener = onExit(removeDir);

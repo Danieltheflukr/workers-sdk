@@ -4,7 +4,11 @@ import { parse as dotenvParse } from "dotenv";
 import { FormData } from "undici";
 import { fetchResult } from "../cfetch";
 import { configFileName } from "../config";
-import { createCommand, createNamespace } from "../core/create-command";
+import {
+	createAlias,
+	createCommand,
+	createNamespace,
+} from "../core/create-command";
 import { createWorkerUploadForm } from "../deployment-bundle/create-worker-upload-form";
 import { confirm, prompt } from "../dialogs";
 import { FatalError, UserError } from "../errors";
@@ -384,9 +388,9 @@ export const secretBulkCommand = createCommand({
 		status: "stable",
 		owner: "Workers: Deploy and Config",
 	},
-	positionalArgs: ["file"],
+	positionalArgs: ["json"],
 	args: {
-		file: {
+		json: {
 			describe: `The file of key-value pairs to upload, as JSON in form {"key": value, ...} or .dev.vars file in the form KEY=VALUE`,
 			type: "string",
 		},
@@ -426,7 +430,7 @@ export const secretBulkCommand = createCommand({
 			}`
 		);
 
-		const content = await parseBulkInputToObject(args.file);
+		const content = await parseBulkInputToObject(args.json);
 
 		if (!content) {
 			return logger.error(`🚨 No content found in file, or piped input.`);
@@ -519,6 +523,16 @@ export const secretBulkCommand = createCommand({
 			logger.log(`✨ 0 secrets successfully uploaded`);
 			throw new Error(`🚨 ${upsertBindings.length} secrets failed to upload`);
 		}
+	},
+});
+
+export const secretBulkAlias = createAlias({
+	aliasOf: "wrangler secret bulk",
+	metadata: {
+		deprecated: true,
+		deprecatedMessage:
+			"`wrangler secret:bulk` is deprecated and will be removed in a future major version.\nPlease use `wrangler secret bulk` instead, which accepts exactly the same arguments.",
+		hidden: true,
 	},
 });
 

@@ -81,6 +81,12 @@ export function Options(yargs: CommonYargsArgv) {
 			describe: "Execute commands/files against a preview D1 DB",
 			type: "boolean",
 			default: false,
+		})
+		.option("batch-size", {
+			describe: "Number of queries to send in a single batch",
+			type: "number",
+			deprecated: true,
+			hidden: true,
 		});
 }
 

@@ -1,21 +1,22 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { PerformanceTimer } from "../../utils/performance";
+import { InternalServerErrorResponse } from "../../utils/responses";
 import { setupSentry } from "../../utils/sentry";
 import { mockJaegerBinding } from "../../utils/tracing";
 import { Analytics } from "./analytics";
 import { AssetsManifest } from "./assets-manifest";
-import { normalizeConfiguration } from "./configuration";
+import { applyConfigurationDefaults } from "./configuration";
 import { ExperimentAnalytics } from "./experiment-analytics";
-import { canFetch, handleRequest } from "./handler";
-import { handleError, submitMetrics } from "./utils/final-operations";
+import { decodePath, getIntent, handleRequest } from "./handler";
 import { getAssetWithMetadataFromKV } from "./utils/kv";
 import type {
-	AssetConfig,
+	AssetWorkerConfig,
 	ColoMetadata,
 	JaegerTracing,
 	UnsafePerformanceTimer,
 } from "../../utils/types";
 import type { Environment, ReadyAnalytics } from "./types";
+import type { Toucan } from "toucan-js";
 
 export type Env = {
 	/*
@@ -30,7 +31,7 @@ export type Env = {
 	 */
 	ASSETS_KV_NAMESPACE: KVNamespace;
 
-	CONFIG: AssetConfig;
+	CONFIG: AssetWorkerConfig;
 
 	SENTRY_DSN: string;
 	SENTRY_ACCESS_CLIENT_ID: string;
@@ -65,8 +66,10 @@ export default class extends WorkerEntrypoint<Env> {
 		const startTimeMs = performance.now();
 
 		try {
-			// TODO: Mock this with Miniflare
-			this.env.JAEGER ??= mockJaegerBinding();
+			if (!this.env.JAEGER) {
+				// For wrangler tests, if we don't have a jaeger binding, default to a mocked binding
+				this.env.JAEGER = mockJaegerBinding();
+			}
 
 			sentry = setupSentry(
 				request,
@@ -80,12 +83,7 @@ export default class extends WorkerEntrypoint<Env> {
 				this.env.CONFIG?.script_id
 			);
 
-			const config = normalizeConfiguration(this.env.CONFIG);
-			sentry?.setContext("compatibilityOptions", {
-				compatibilityDate: config.compatibility_date,
-				compatibilityFlags: config.compatibility_flags,
-				originalCompatibilityFlags: this.env.CONFIG.compatibility_flags,
-			});
+			const config = applyConfigurationDefaults(this.env.CONFIG);
 			const userAgent = request.headers.get("user-agent") ?? "UA UNKNOWN";
 
 			const url = new URL(request.url);
@@ -107,7 +105,6 @@ export default class extends WorkerEntrypoint<Env> {
 					hostname: url.hostname,
 					htmlHandling: config.html_handling,
 					notFoundHandling: config.not_found_handling,
-					compatibilityFlags: config.compatibility_flags,
 					userAgent: userAgent,
 				});
 			}
@@ -125,8 +122,7 @@ export default class extends WorkerEntrypoint<Env> {
 					this.env,
 					config,
 					this.unstable_exists.bind(this),
-					this.unstable_getByETag.bind(this),
-					analytics
+					this.unstable_getByETag.bind(this)
 				);
 
 				analytics.setData({ status: response.status });
@@ -134,38 +130,70 @@ export default class extends WorkerEntrypoint<Env> {
 				return response;
 			});
 		} catch (err) {
-			return handleError(sentry, analytics, err);
+			return this.handleError(sentry, analytics, err);
 		} finally {
-			submitMetrics(analytics, performance, startTimeMs);
+			this.submitMetrics(analytics, performance, startTimeMs);
 		}
 	}
 
-	// TODO: Add observability to these methods
-	async unstable_canFetch(request: Request): Promise<boolean> {
-		// TODO: Mock this with Miniflare
-		this.env.JAEGER ??= mockJaegerBinding();
+	handleError(sentry: Toucan | undefined, analytics: Analytics, err: unknown) {
+		try {
+			const response = new InternalServerErrorResponse(err as Error);
 
-		return canFetch(
-			request,
-			this.env,
-			normalizeConfiguration(this.env.CONFIG),
-			this.unstable_exists.bind(this)
-		);
+			// Log to Sentry if we can
+			if (sentry) {
+				sentry.captureException(err);
+			}
+
+			if (err instanceof Error) {
+				analytics.setData({ error: err.message });
+			}
+
+			return response;
+		} catch (e) {
+			console.error("Error handling error", e);
+			return new InternalServerErrorResponse(e as Error);
+		}
 	}
 
-	async unstable_getByETag(eTag: string): Promise<{
-		readableStream: ReadableStream;
-		contentType: string | undefined;
-		cacheStatus: "HIT" | "MISS";
-	}> {
-		const performance = new PerformanceTimer(this.env.UNSAFE_PERFORMANCE);
-		const startTime = performance.now();
+	submitMetrics(
+		analytics: Analytics,
+		performance: PerformanceTimer,
+		startTimeMs: number
+	) {
+		try {
+			analytics.setData({ requestTime: performance.now() - startTimeMs });
+			analytics.write();
+		} catch (e) {
+			console.error("Error submitting metrics", e);
+		}
+	}
+
+	// TODO: Trace unstable methods
+	async unstable_canFetch(request: Request): Promise<boolean> {
+		const url = new URL(request.url);
+		const decodedPathname = decodePath(url.pathname);
+		const intent = await getIntent(
+			decodedPathname,
+			{
+				...applyConfigurationDefaults(this.env.CONFIG),
+				not_found_handling: "none",
+			},
+			this.unstable_exists.bind(this)
+		);
+		if (intent === null) {
+			return false;
+		}
+		return true;
+	}
+
+	async unstable_getByETag(
+		eTag: string
+	): Promise<{ readableStream: ReadableStream; contentType: string }> {
 		const asset = await getAssetWithMetadataFromKV(
 			this.env.ASSETS_KV_NAMESPACE,
 			eTag
 		);
-		const endTime = performance.now();
-		const assetFetchTime = endTime - startTime;
 
 		if (!asset || !asset.value) {
 			throw new Error(
@@ -175,19 +203,13 @@ export default class extends WorkerEntrypoint<Env> {
 
 		return {
 			readableStream: asset.value,
-			contentType: asset.metadata?.contentType,
-			// KV does not yet provide a way to check if a value was fetched from cache
-			// so we assume that if the fetch time is less than 100ms, it was a cache hit.
-			// This is a reasonable assumption given the data we have and how KV works.
-			cacheStatus: assetFetchTime <= 100 ? "HIT" : "MISS",
+			contentType: asset.metadata?.contentType ?? "application/octet-stream",
 		};
 	}
 
-	async unstable_getByPathname(pathname: string): Promise<{
-		readableStream: ReadableStream;
-		contentType: string | undefined;
-		cacheStatus: "HIT" | "MISS";
-	} | null> {
+	async unstable_getByPathname(
+		pathname: string
+	): Promise<{ readableStream: ReadableStream; contentType: string } | null> {
 		const eTag = await this.unstable_exists(pathname);
 		if (!eTag) {
 			return null;
@@ -199,6 +221,13 @@ export default class extends WorkerEntrypoint<Env> {
 	async unstable_exists(pathname: string): Promise<string | null> {
 		const analytics = new ExperimentAnalytics(this.env.EXPERIMENT_ANALYTICS);
 		const performance = new PerformanceTimer(this.env.UNSAFE_PERFORMANCE);
+
+		const INTERPOLATION_EXPERIMENT_SAMPLE_RATE = 0.5;
+		let searchMethod: "binary" | "interpolation" = "binary";
+		if (Math.random() < INTERPOLATION_EXPERIMENT_SAMPLE_RATE) {
+			searchMethod = "interpolation";
+		}
+		analytics.setData({ manifestReadMethod: searchMethod });
 
 		if (
 			this.env.COLO_METADATA &&
@@ -214,7 +243,16 @@ export default class extends WorkerEntrypoint<Env> {
 		const startTimeMs = performance.now();
 		try {
 			const assetsManifest = new AssetsManifest(this.env.ASSETS_MANIFEST);
-			return await assetsManifest.get(pathname);
+			if (searchMethod === "interpolation") {
+				try {
+					return await assetsManifest.getWithInterpolationSearch(pathname);
+				} catch (e) {
+					analytics.setData({ manifestReadMethod: "binary-fallback" });
+					return await assetsManifest.getWithBinarySearch(pathname);
+				}
+			} else {
+				return await assetsManifest.getWithBinarySearch(pathname);
+			}
 		} finally {
 			analytics.setData({ manifestReadTime: performance.now() - startTimeMs });
 			analytics.write();

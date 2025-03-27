@@ -2,12 +2,10 @@ import { http, HttpResponse } from "msw";
 import { mockGetWorkerSubdomain } from "./mock-workers-subdomain";
 import { createFetchResult, msw } from "./msw";
 import { serialize, toString } from "./serialize-form-data-entry";
-import type {
-	AssetConfigMetadata,
-	WorkerMetadata,
-} from "../../deployment-bundle/create-worker-upload-form";
+import type { WorkerMetadata } from "../../deployment-bundle/create-worker-upload-form";
 import type { CfWorkerInit } from "../../deployment-bundle/worker";
 import type { NonVersionedScriptSettings } from "../../versions/api";
+import type { AssetConfig } from "@cloudflare/workers-shared";
 import type { HttpResponseResolver } from "msw";
 
 /** Create a mock handler for the request to upload a worker script. */
@@ -34,12 +32,11 @@ export function mockUploadWorkerRequest(
 		expectedScriptName?: string;
 		expectedAssets?: {
 			jwt: string;
-			config: AssetConfigMetadata;
+			config: AssetConfig;
 		};
 		useOldUploadApi?: boolean;
 		expectedObservability?: CfWorkerInit["observability"];
 		expectedSettingsPatch?: Partial<NonVersionedScriptSettings>;
-		expectedContainers?: { class_name: string }[];
 	} = {}
 ) {
 	const expectedScriptName = (options.expectedScriptName ??= "test-name");
@@ -118,10 +115,6 @@ export function mockUploadWorkerRequest(
 		if ("expectedObservability" in options) {
 			expect(metadata.observability).toEqual(expectedObservability);
 		}
-		if ("expectedContainers" in options) {
-			expect(metadata.containers).toEqual(expectedContainers);
-		}
-
 		if (expectedUnsafeMetaData !== undefined) {
 			Object.keys(expectedUnsafeMetaData).forEach((key) => {
 				expect(metadata[key]).toEqual(expectedUnsafeMetaData[key]);
@@ -177,7 +170,6 @@ export function mockUploadWorkerRequest(
 		expectedUnsafeMetaData,
 		expectedCapnpSchema,
 		expectedLimits,
-		expectedContainers,
 		keepVars,
 		keepSecrets,
 		expectedDispatchNamespace,

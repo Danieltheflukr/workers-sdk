@@ -1,3 +1,5 @@
+import { Cache } from "@miniflare/cache";
+import { MemoryStorage } from "@miniflare/storage-memory";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
 	CACHE_PRESERVATION_WRITE_FREQUENCY,
@@ -7,7 +9,8 @@ import {
 import { createMetadataObject } from "../../metadata-generator/createMetadataObject";
 import type { HandlerContext } from "../../asset-server/handler";
 import type { Metadata } from "../../asset-server/metadata";
-import type { RedirectRule } from "@cloudflare/workers-shared/utils/configuration/types";
+import type { RedirectRule } from "../../metadata-generator/types";
+import type { Cache as WorkersCache } from "@cloudflare/workers-types/experimental";
 
 describe("asset-server handler", () => {
 	test("Returns appropriate status codes", async () => {
@@ -454,6 +457,9 @@ describe("asset-server handler", () => {
 				)
 			);
 
+		// Create cache storage to reuse between requests
+		const { caches } = createCacheStorage();
+
 		const getResponse = async () =>
 			getTestResponse({
 				request: new Request("https://example.com/"),
@@ -557,6 +563,9 @@ describe("asset-server handler", () => {
 			return null;
 		};
 
+		// Create cache storage to reuse between requests
+		const { caches } = createCacheStorage();
+
 		const getResponse = async () =>
 			getTestResponse({
 				request: new Request("https://example.com/"),
@@ -641,6 +650,7 @@ describe("asset-server handler", () => {
 		test("preservationCacheV2", async () => {
 			const deploymentId = "deployment-" + Math.random();
 			const metadata = createMetadataObject({ deploymentId }) as Metadata;
+			const { caches } = createCacheStorage();
 
 			let findAssetEntryForPath = async (path: string) => {
 				if (path === "/foo.html") {
@@ -719,7 +729,7 @@ describe("asset-server handler", () => {
 			expect(response3.status).toBe(200);
 			expect(await response3.text()).toMatchInlineSnapshot('"hello world!"');
 			// Cached responses have the same headers with a few changes/additions:
-			expect(Object.fromEntries(response3.headers)).toMatchObject({
+			expect(Object.fromEntries(response3.headers)).toStrictEqual({
 				...expectedHeaders,
 				"cache-control": "public, s-maxage=604800",
 				"x-robots-tag": "noindex",
@@ -733,14 +743,7 @@ describe("asset-server handler", () => {
 				findAssetEntryForPath,
 				fetchAsset: () =>
 					Promise.resolve(Object.assign(new Response("hello world!"))),
-				// @ts-expect-error Create a dummy fake cache to simulate a fresh cache
-				caches: {
-					open(cacheName) {
-						return caches.open("fresh" + cacheName);
-					},
-				},
 			});
-
 			expect(response4.status).toBe(404);
 			expect(Object.fromEntries(response4.headers)).toMatchInlineSnapshot(`
 				{
@@ -1077,6 +1080,39 @@ interface HandlerSpies {
 	getAssetKey: number;
 	negotiateContent: number;
 	waitUntil: Promise<unknown>[];
+	caches: {
+		[key: string]: WorkersCache;
+	} & { default: WorkersCache };
+}
+
+function createMemoryCache(): WorkersCache {
+	// Miniflare RequestInit is missing CfProperties so we need to cast
+	return new Cache(new MemoryStorage()) as unknown as WorkersCache;
+}
+
+function createCacheStorage(): {
+	caches: CacheStorage;
+	cacheSpy: {
+		[key: string]: WorkersCache;
+	} & { default: WorkersCache };
+} {
+	const cacheSpy: { [key: string]: WorkersCache } & {
+		default: WorkersCache;
+	} = {
+		default: createMemoryCache(),
+	};
+	const caches = {
+		open(cacheName: string): Promise<WorkersCache> {
+			if (cacheSpy[cacheName]) {
+				return Promise.resolve(cacheSpy[cacheName]);
+			}
+			const cache = createMemoryCache();
+			cacheSpy[cacheName] = cache;
+			return Promise.resolve(cache);
+		},
+		default: cacheSpy.default,
+	};
+	return { caches, cacheSpy };
 }
 
 async function getTestResponse({
@@ -1115,6 +1151,9 @@ async function getTestResponse({
 		getAssetKey: 0,
 		negotiateContent: 0,
 		waitUntil: [],
+		caches: {
+			default: createMemoryCache(),
+		},
 	};
 
 	const response = await generateHandler<string>({
@@ -1146,7 +1185,14 @@ async function getTestResponse({
 		waitUntil: async (promise: Promise<unknown>) => {
 			spies.waitUntil.push(promise);
 		},
-		caches: options.caches ?? caches,
+		caches: options.caches ?? {
+			open(cacheName) {
+				const cache = createMemoryCache();
+				spies.caches[cacheName] = cache;
+				return Promise.resolve(cache);
+			},
+			...spies.caches,
+		},
 	});
 
 	return { response, spies };

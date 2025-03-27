@@ -549,7 +549,7 @@ export async function handleModuleFallbackRequest(
 	// currently passes `import("file:///a/index.mjs")` through like this.
 	// TODO(soon): remove this code once the new modules refactor lands
 	if (specifier.startsWith("file:")) {
-		specifier = fileURLToPath(specifier);
+		specifier = specifier.substring(5);
 	}
 
 	if (isWindows) {

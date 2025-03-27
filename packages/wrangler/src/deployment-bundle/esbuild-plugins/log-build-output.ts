@@ -1,4 +1,5 @@
 import { logBuildFailure, logBuildWarnings } from "../../logger";
+import { rewriteNodeCompatBuildFailure } from "../build-failures";
 import type { Plugin } from "esbuild";
 import type { NodeJSCompatMode } from "miniflare";
 
@@ -29,6 +30,9 @@ export function logBuildOutput(
 					}
 				} else {
 					if (errors.length > 0) {
+						if (nodejsCompatMode !== "legacy") {
+							rewriteNodeCompatBuildFailure(errors, nodejsCompatMode);
+						}
 						logBuildFailure(errors, warnings);
 						return;
 					}

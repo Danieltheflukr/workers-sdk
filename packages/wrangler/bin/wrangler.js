@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 const { spawn } = require("child_process");
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
 
-const MIN_NODE_VERSION = "18.0.0";
+const MIN_NODE_VERSION = "16.13.0";
+const debug =
+	process.env["WRANGLER_LOG"] === "debug"
+		? (...args) => console.log(...args)
+		: () => {};
 
 let wranglerProcess;
 
